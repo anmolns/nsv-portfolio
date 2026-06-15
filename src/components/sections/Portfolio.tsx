@@ -248,15 +248,12 @@ export function Portfolio() {
     <>
       <section
         id="portfolio"
-        className="relative z-0 py-20 lg:py-28 bg-off-white overflow-hidden"
+        className="relative z-0 pt-12 pb-20 lg:pt-16 lg:pb-24 bg-off-white overflow-hidden"
         aria-label="Portfolio"
       >
         <div className="w-full px-5 sm:px-8 lg:px-10 xl:px-14">
-          <div ref={headerRef} className="mb-10 lg:mb-14">
-            <span className="text-[11px] tracking-[0.35em] uppercase text-cyan font-bold">
-              Portfolio
-            </span>
-            <h2 className="font-display text-4xl lg:text-6xl font-bold text-navy mt-3 leading-tight max-w-3xl">
+          <div ref={headerRef} className="mb-8 lg:mb-10">
+            <h2 className="font-display text-4xl lg:text-6xl font-bold text-navy leading-tight max-w-3xl">
               Work across{' '}
               <span className="text-cyan">{cities.length} cities</span>
             </h2>

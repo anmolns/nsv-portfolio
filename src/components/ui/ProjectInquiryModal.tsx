@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '../../lib/utils'
+import { contact } from '../../data/contact'
 
 export interface InquiryFormData {
   name: string
@@ -254,7 +255,7 @@ export function ProjectInquiryModal({ isOpen, onClose }: ProjectInquiryModalProp
                             type="tel"
                             value={data.phone}
                             onChange={(v) => update('phone', v)}
-                            placeholder="+91 98765 43210"
+                            placeholder={contact.phoneDisplay}
                             error={errors.phone}
                           />
                         </div>

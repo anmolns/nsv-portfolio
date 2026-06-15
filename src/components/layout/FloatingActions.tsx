@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { contact } from '../../data/contact'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export function FloatingActions() {
@@ -13,7 +14,7 @@ export function FloatingActions() {
   return (
     <>
       <motion.a
-        href="https://wa.me/919876543210"
+        href={contact.whatsapp}
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 left-6 z-50 w-12 h-12 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg hover:scale-105 transition-transform"

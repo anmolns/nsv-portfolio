@@ -1,27 +1,18 @@
 import { motion } from 'framer-motion'
 import { useScrollPosition } from '../../hooks/useMotion'
 import { cn } from '../../lib/utils'
-
-function LogoMark({ className }: { className?: string }) {
-  return (
-    <svg width="36" height="36" viewBox="0 0 32 32" fill="none" className={className} aria-hidden>
-      <path d="M16 2L28 9V23L16 30L4 23V9L16 2Z" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      <path d="M16 8L22 11.5V18.5L16 22L10 18.5V11.5L16 8Z" fill="currentColor" opacity="0.5" />
-      <path d="M16 12L19 13.75V17.25L16 19L13 17.25V13.75L16 12Z" fill="currentColor" />
-    </svg>
-  )
-}
+import { contact } from '../../data/contact'
+import { Logo } from '../ui/Logo'
 
 export function Navbar() {
   const scrolled = useScrollPosition()
-  const onLightBg = scrolled
 
   return (
     <motion.header
       className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-500',
-        onLightBg
-          ? 'bg-white/90 backdrop-blur-xl border-b border-border py-3 shadow-sm'
+        'fixed top-0 left-0 right-0 z-50 overflow-visible transition-all duration-500',
+        scrolled
+          ? 'bg-navy/40 backdrop-blur-xl border-b border-white/20 py-3.5 shadow-sm shadow-navy/5'
           : 'bg-transparent py-5 lg:py-6',
       )}
       initial={{ y: -80, opacity: 0 }}
@@ -38,21 +29,16 @@ export function Navbar() {
             e.preventDefault()
             document.getElementById('home')?.scrollIntoView({ behavior: 'smooth' })
           }}
-          className={cn(
-            'flex items-center gap-2.5 group',
-            onLightBg ? 'text-cyan' : 'text-cyan',
-          )}
+          className="flex shrink-0 items-center group"
           data-cursor="pointer"
         >
-          <LogoMark />
-          <span
+          <Logo
+            size="md"
             className={cn(
-              'font-display text-lg lg:text-xl font-bold tracking-wide',
-              onLightBg ? 'text-navy' : 'text-white',
+              'transition-[height] duration-300',
+              scrolled ? 'h-9 sm:h-10' : 'h-10 sm:h-11 lg:h-12',
             )}
-          >
-            NS <span className="text-cyan">VENTURES</span>
-          </span>
+          />
         </a>
 
         <div className="flex items-center gap-3">
@@ -62,10 +48,7 @@ export function Navbar() {
               e.preventDefault()
               document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })
             }}
-            className={cn(
-              'hidden sm:inline-flex text-xs font-semibold tracking-wide uppercase transition-colors duration-300',
-              onLightBg ? 'text-navy/60 hover:text-cyan' : 'text-white/70 hover:text-cyan',
-            )}
+            className="hidden sm:inline-flex text-xs font-semibold tracking-wide uppercase text-white/70 hover:text-cyan transition-colors duration-300"
             data-cursor="pointer"
           >
             Portfolio
@@ -76,16 +59,13 @@ export function Navbar() {
               e.preventDefault()
               document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })
             }}
-            className={cn(
-              'hidden md:inline-flex text-xs font-semibold tracking-wide uppercase transition-colors duration-300',
-              onLightBg ? 'text-navy/60 hover:text-cyan' : 'text-white/70 hover:text-cyan',
-            )}
+            className="hidden md:inline-flex text-xs font-semibold tracking-wide uppercase text-white/70 hover:text-cyan transition-colors duration-300"
             data-cursor="pointer"
           >
             Contact
           </a>
           <motion.a
-            href="tel:+919876543210"
+            href={contact.phoneTel}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-cyan text-navy text-sm font-bold shadow-lg shadow-cyan/25 hover:bg-cyan-bright transition-colors duration-300"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
@@ -94,7 +74,7 @@ export function Navbar() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1L6.6 10.8z" />
             </svg>
-            +91 98765 43210
+            {contact.phoneDisplay}
           </motion.a>
         </div>
       </nav>

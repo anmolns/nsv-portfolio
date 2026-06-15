@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion } from 'framer-motion'
+import { contact } from '../../data/contact'
 import { MagneticButton } from '../ui/Motion'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -148,10 +149,10 @@ export function Hero() {
           </MagneticButton>
           <MagneticButton
             variant="secondary"
-            onClick={() => window.open('tel:+919876543210')}
+            onClick={() => window.open(contact.phoneTel)}
             data-cursor="pointer"
           >
-            +91 98765 43210
+            {contact.phoneDisplay}
           </MagneticButton>
         </motion.div>
       </div>

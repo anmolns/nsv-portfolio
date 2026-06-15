@@ -4,7 +4,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { MagneticButton } from '../ui/Motion'
 import { ProjectInquiryModal } from '../ui/ProjectInquiryModal'
 import { usePrefersReducedMotion } from '../../hooks/useMotion'
+import { contact } from '../../data/contact'
 import { cn } from '../../lib/utils'
+import { Logo } from '../ui/Logo'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -105,16 +107,6 @@ const socialLinks = [
     ),
   },
 ] as const
-
-function LogoMark({ className }: { className?: string }) {
-  return (
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" className={className} aria-hidden>
-      <path d="M16 2L28 9V23L16 30L4 23V9L16 2Z" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M16 8L22 11.5V18.5L16 22L10 18.5V11.5L16 8Z" fill="currentColor" opacity="0.5" />
-      <path d="M16 12L19 13.75V17.25L16 19L13 17.25V13.75L16 12Z" fill="currentColor" />
-    </svg>
-  )
-}
 
 function SectionHeading({
   children,
@@ -372,7 +364,7 @@ export function Footer() {
               <MagneticButton
                 variant="secondary"
                 size="md"
-                onClick={() => window.open('https://wa.me/919876543210', '_blank')}
+                onClick={() => window.open(contact.whatsapp, '_blank')}
                 data-cursor="pointer"
               >
                 WhatsApp Us
@@ -399,13 +391,10 @@ export function Footer() {
                 e.preventDefault()
                 document.getElementById('home')?.scrollIntoView({ behavior: 'smooth' })
               }}
-              className="inline-flex items-center gap-2.5 mb-4"
+              className="inline-flex items-center mb-4"
               data-cursor="pointer"
             >
-              <LogoMark className="text-cyan" />
-              <span className="font-display text-base font-bold text-white">
-                NS <span className="text-cyan">VENTURES</span>
-              </span>
+              <Logo size="lg" className="h-12 sm:h-14" />
             </a>
             <p className="text-white/45 text-sm leading-relaxed font-light max-w-xs mb-5">
               Premium real estate cinematography, drone aerials, and brand films for developers across India.
@@ -424,15 +413,15 @@ export function Footer() {
             <SectionHeading>Contact</SectionHeading>
             <div className="space-y-4">
               <ContactItem
-                label="Studio"
+                label="Address"
                 icon={
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
                   </svg>
                 }
               >
-                <p>Mumbai, Maharashtra</p>
-                <p className="text-white/45 text-xs mt-1">Pan-India operations</p>
+                <p>{contact.address.line1}</p>
+                <p>{contact.address.line2}</p>
               </ContactItem>
 
               <ContactItem
@@ -443,21 +432,21 @@ export function Footer() {
                   </svg>
                 }
               >
-                <FooterLink href="mailto:hello@nsventures.in" external>
-                  hello@nsventures.in
+                <FooterLink href={contact.emailMailto} external>
+                  {contact.email}
                 </FooterLink>
               </ContactItem>
 
               <ContactItem
-                label="Phone"
+                label="Call"
                 icon={
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l2.2-2.2a1 1 0 011.01-.24c1.12.37 2.33.57 3.57.57a1 1 0 011 1V20a1 1 0 01-1 1C10.07 21 3 13.93 3 5a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1.01l-2.2 2.21z" />
                   </svg>
                 }
               >
-                <FooterLink href="tel:+919876543210" external>
-                  +91 98765 43210
+                <FooterLink href={contact.phoneTel} external>
+                  {contact.phoneDisplay}
                 </FooterLink>
               </ContactItem>
             </div>
