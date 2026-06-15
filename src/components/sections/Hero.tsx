@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion } from 'framer-motion'
-import { contact } from '../../data/contact'
 import { MagneticButton } from '../ui/Motion'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -22,7 +21,11 @@ const fadeUp = {
   }),
 }
 
-export function Hero() {
+interface HeroProps {
+  onInquiryClick?: () => void
+}
+
+export function Hero({ onInquiryClick }: HeroProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [videoReady, setVideoReady] = useState(false)
@@ -149,10 +152,10 @@ export function Hero() {
           </MagneticButton>
           <MagneticButton
             variant="secondary"
-            onClick={() => window.open(contact.phoneTel)}
+            onClick={onInquiryClick}
             data-cursor="pointer"
           >
-            {contact.phoneDisplay}
+            Start a Project
           </MagneticButton>
         </motion.div>
       </div>

@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { MagneticButton } from '../ui/Motion'
-import { ProjectInquiryModal } from '../ui/ProjectInquiryModal'
 import { usePrefersReducedMotion } from '../../hooks/useMotion'
 import { contact } from '../../data/contact'
 import { cn } from '../../lib/utils'
@@ -204,8 +203,11 @@ function FooterLink({
   )
 }
 
-export function Footer() {
-  const [inquiryOpen, setInquiryOpen] = useState(false)
+interface FooterProps {
+  onInquiryClick?: () => void
+}
+
+export function Footer({ onInquiryClick }: FooterProps) {
   const footerRef = useRef<HTMLElement>(null)
   const ctaRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
@@ -356,7 +358,7 @@ export function Footer() {
               <MagneticButton
                 variant="primary"
                 size="md"
-                onClick={() => setInquiryOpen(true)}
+                onClick={onInquiryClick}
                 data-cursor="pointer"
               >
                 Start a Project
@@ -469,7 +471,6 @@ export function Footer() {
         </div>
       </div>
 
-      <ProjectInquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
     </footer>
   )
 }
