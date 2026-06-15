@@ -1,50 +1,80 @@
 import { useEffect } from 'react'
-import Lenis from 'lenis'
-import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-
-gsap.registerPlugin(ScrollTrigger)
 
 export function useLenis() {
   useEffect(() => {
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
+    let lenis: InstanceType<(typeof import('lenis'))['default']> | null = null
+    let rafId = 0
+    let cancelled = false
 
-    lenis.on('scroll', ScrollTrigger.update)
+    const init = async () => {
+      if (cancelled) return
 
-    ScrollTrigger.scrollerProxy(document.documentElement, {
-      scrollTop(value) {
-        if (arguments.length && value !== undefined) {
-          lenis.scrollTo(value, { immediate: true })
-        }
-        return lenis.scroll
-      },
-      getBoundingClientRect() {
-        return {
-          top: 0,
-          left: 0,
-          width: window.innerWidth,
-          height: window.innerHeight,
-        }
-      },
-    })
+      const [{ default: Lenis }, gsapModule, scrollTriggerModule] = await Promise.all([
+        import('lenis'),
+        import('gsap'),
+        import('gsap/ScrollTrigger'),
+      ])
 
-    function raf(time: number) {
-      lenis.raf(time)
-      requestAnimationFrame(raf)
+      if (cancelled) return
+
+      const gsap = gsapModule.default
+      const ScrollTrigger = scrollTriggerModule.ScrollTrigger
+      gsap.registerPlugin(ScrollTrigger)
+
+      const instance = new Lenis({
+        duration: 1.2,
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+      })
+      lenis = instance
+
+      instance.on('scroll', ScrollTrigger.update)
+
+      ScrollTrigger.scrollerProxy(document.documentElement, {
+        scrollTop(value) {
+          if (arguments.length && value !== undefined && lenis) {
+            lenis.scrollTo(value, { immediate: true })
+          }
+          return lenis?.scroll ?? 0
+        },
+        getBoundingClientRect() {
+          return {
+            top: 0,
+            left: 0,
+            width: window.innerWidth,
+            height: window.innerHeight,
+          }
+        },
+      })
+
+      const raf = (time: number) => {
+        lenis?.raf(time)
+        rafId = requestAnimationFrame(raf)
+      }
+      rafId = requestAnimationFrame(raf)
+
+      ScrollTrigger.defaults({ scroller: document.documentElement })
+      ScrollTrigger.refresh()
     }
-    requestAnimationFrame(raf)
 
-    ScrollTrigger.defaults({ scroller: document.documentElement })
-    ScrollTrigger.refresh()
+    const idleId =
+      typeof requestIdleCallback !== 'undefined'
+        ? requestIdleCallback(() => void init(), { timeout: 2000 })
+        : window.setTimeout(() => void init(), 300)
 
     return () => {
-      lenis.destroy()
-      ScrollTrigger.scrollerProxy(document.documentElement, {})
-      ScrollTrigger.getAll().forEach((t) => t.kill())
+      cancelled = true
+      if (typeof cancelIdleCallback !== 'undefined' && typeof idleId === 'number') {
+        cancelIdleCallback(idleId)
+      } else {
+        clearTimeout(idleId as number)
+      }
+      cancelAnimationFrame(rafId)
+      lenis?.destroy()
+      import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
+        ScrollTrigger.scrollerProxy(document.documentElement, {})
+        ScrollTrigger.getAll().forEach((t) => t.kill())
+      })
     }
   }, [])
 }

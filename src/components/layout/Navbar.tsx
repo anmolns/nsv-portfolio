@@ -57,10 +57,10 @@ export function Navbar() {
 
         <div className="flex items-center gap-3">
           <a
-            href="#offset-carousel"
+            href="#portfolio"
             onClick={(e) => {
               e.preventDefault()
-              document.getElementById('offset-carousel')?.scrollIntoView({ behavior: 'smooth' })
+              document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })
             }}
             className={cn(
               'hidden sm:inline-flex text-xs font-semibold tracking-wide uppercase transition-colors duration-300',
@@ -68,13 +68,13 @@ export function Navbar() {
             )}
             data-cursor="pointer"
           >
-            View Work
+            Portfolio
           </a>
           <a
-            href="#portfolio"
+            href="#contact"
             onClick={(e) => {
               e.preventDefault()
-              document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })
+              document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })
             }}
             className={cn(
               'hidden md:inline-flex text-xs font-semibold tracking-wide uppercase transition-colors duration-300',
@@ -82,7 +82,7 @@ export function Navbar() {
             )}
             data-cursor="pointer"
           >
-            Portfolio
+            Contact
           </a>
           <motion.a
             href="tel:+919876543210"

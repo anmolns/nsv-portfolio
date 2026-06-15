@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion } from 'framer-motion'
@@ -7,48 +7,79 @@ import { MagneticButton } from '../ui/Motion'
 gsap.registerPlugin(ScrollTrigger)
 
 const HERO_VIDEO =
-  'https://videos.pexels.com/video-files/3209828/3209828-uhd_2560_1440_25fps.mp4'
+  'https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4'
+
+const HERO_POSTER =
+  'https://images.pexels.com/videos/3209828/pictures/preview-0.jpg?auto=compress&cs=tinysrgb&w=1280'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.8, delay: 0.3 + i * 0.12, ease: [0.16, 1, 0.3, 1] as const },
+    transition: { duration: 0.8, delay: 0.15 + i * 0.1, ease: [0.16, 1, 0.3, 1] as const },
   }),
 }
 
 export function Hero() {
   const sectionRef = useRef<HTMLElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [videoReady, setVideoReady] = useState(false)
 
   useEffect(() => {
     const section = sectionRef.current
-    if (!section) return
+    const video = videoRef.current
+    if (!section || !video) return
 
-    const video = section.querySelector('video')
+    const loadVideo = () => {
+      if (video.src) return
+      video.src = HERO_VIDEO
+      video.load()
+      video.play().catch(() => {})
+    }
 
-    gsap.to(video, {
-      scale: 1.08,
-      ease: 'none',
-      scrollTrigger: {
-        trigger: section,
-        start: 'top top',
-        end: 'bottom top',
-        scrub: true,
-      },
-    })
+    const idleId =
+      typeof requestIdleCallback !== 'undefined'
+        ? requestIdleCallback(loadVideo, { timeout: 2500 })
+        : window.setTimeout(loadVideo, 800)
 
-    video?.play().catch(() => {})
+    const setupScroll = () => {
+      gsap.to(video, {
+        scale: 1.08,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: section,
+          start: 'top top',
+          end: 'bottom top',
+          scrub: true,
+        },
+      })
+    }
+
+    const scrollId =
+      typeof requestIdleCallback !== 'undefined'
+        ? requestIdleCallback(setupScroll, { timeout: 3000 })
+        : window.setTimeout(setupScroll, 1200)
 
     return () => {
+      if (typeof cancelIdleCallback !== 'undefined' && typeof idleId === 'number') {
+        cancelIdleCallback(idleId)
+      } else {
+        clearTimeout(idleId as number)
+      }
+      if (typeof cancelIdleCallback !== 'undefined' && typeof scrollId === 'number') {
+        cancelIdleCallback(scrollId)
+      } else {
+        clearTimeout(scrollId as number)
+      }
       ScrollTrigger.getAll().forEach((t) => {
         if (t.trigger === section) t.kill()
       })
     }
   }, [])
 
-  const scrollToCarousel = () => {
-    document.getElementById('offset-carousel')?.scrollIntoView({ behavior: 'smooth' })
+  const scrollToPortfolio = () => {
+    document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
@@ -59,14 +90,17 @@ export function Hero() {
       aria-label="Hero"
     >
       <video
-        className="absolute inset-0 w-full h-full object-cover brightness-[0.55]"
-        src={HERO_VIDEO}
-        autoPlay
+        ref={videoRef}
+        className={`absolute inset-0 w-full h-full object-cover brightness-[0.55] transition-opacity duration-700 ${
+          videoReady ? 'opacity-100' : 'opacity-0'
+        }`}
+        poster={HERO_POSTER}
         muted
         loop
         playsInline
-        preload="metadata"
+        preload="none"
         aria-hidden
+        onCanPlay={() => setVideoReady(true)}
       />
 
       <div className="absolute inset-0 bg-gradient-to-r from-navy from-0% via-navy/85 via-45% to-navy/30 to-100% pointer-events-none" />
@@ -86,19 +120,13 @@ export function Hero() {
           </span>
         </motion.div>
 
-        <motion.h1
-          custom={1}
-          initial="hidden"
-          animate="visible"
-          variants={fadeUp}
-          className="font-display text-[clamp(2.2rem,6vw,4.5rem)] font-bold text-white leading-[1.08] max-w-4xl text-balance"
-        >
+        <h1 className="font-display text-[clamp(2.2rem,6vw,4.5rem)] font-bold text-white leading-[1.08] max-w-4xl text-balance">
           Transforming Properties Into{' '}
           <span className="text-cyan">Stories That Sell</span>
-        </motion.h1>
+        </h1>
 
         <motion.p
-          custom={2}
+          custom={1}
           initial="hidden"
           animate="visible"
           variants={fadeUp}
@@ -109,13 +137,13 @@ export function Hero() {
         </motion.p>
 
         <motion.div
-          custom={3}
+          custom={2}
           initial="hidden"
           animate="visible"
           variants={fadeUp}
           className="mt-10 flex flex-wrap gap-4"
         >
-          <MagneticButton onClick={scrollToCarousel} data-cursor="pointer">
+          <MagneticButton onClick={scrollToPortfolio} data-cursor="pointer">
             View Our Work
           </MagneticButton>
           <MagneticButton
@@ -132,7 +160,7 @@ export function Hero() {
         className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-3"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.5, duration: 0.8 }}
+        transition={{ delay: 1.2, duration: 0.8 }}
       >
         <span className="text-[10px] tracking-[0.3em] uppercase text-white/80 font-semibold">
           Scroll to explore

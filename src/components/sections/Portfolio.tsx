@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
+import { motion } from 'framer-motion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { projects, cities, type Project } from '../../data/projects'
 import { ProjectModal } from '../ui/ProjectModal'
+import { useMediaQuery } from '../../hooks/useMotion'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -16,89 +17,151 @@ function PortfolioCard({
   index: number
   onOpen: (p: Project) => void
 }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const cardRef = useRef<HTMLButtonElement>(null)
-  const x = useMotionValue(0)
-  const y = useMotionValue(0)
-  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [5, -5]), { stiffness: 300, damping: 30 })
-  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-5, 5]), { stiffness: 300, damping: 30 })
+  const [flipped, setFlipped] = useState(false)
+  const canHover = useMediaQuery('(hover: hover)')
 
-  const handleMouse = (e: React.MouseEvent) => {
-    const rect = cardRef.current?.getBoundingClientRect()
-    if (!rect) return
-    x.set((e.clientX - rect.left) / rect.width - 0.5)
-    y.set((e.clientY - rect.top) / rect.height - 0.5)
+  const handleEnter = () => {
+    if (canHover) setFlipped(true)
   }
 
-  const resetMouse = () => {
-    x.set(0)
-    y.set(0)
+  const handleLeave = () => {
+    if (canHover) setFlipped(false)
+  }
+
+  const handleCardClick = () => {
+    if (!canHover) {
+      if (!flipped) {
+        setFlipped(true)
+        return
+      }
+    }
+    onOpen(project)
   }
 
   return (
-    <motion.button
-      ref={cardRef}
-      className="portfolio-card group relative text-left bg-white rounded-2xl overflow-hidden border border-border hover:border-cyan/40 hover:shadow-2xl hover:shadow-cyan/10 transition-shadow duration-500"
-      onClick={() => onOpen(project)}
-      data-cursor="pointer"
-      style={{ rotateX, rotateY, transformPerspective: 1200 }}
-      onMouseMove={handleMouse}
-      onMouseLeave={resetMouse}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+    <div
+      className="portfolio-card group w-full"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-off-white">
-        <img
-          src={project.thumbnail}
-          alt={project.title}
-          loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-        />
-        <video
-          ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-          src={project.videoUrl}
-          muted
-          loop
-          playsInline
-          preload="none"
-          onMouseEnter={() => videoRef.current?.play().catch(() => {})}
-          onMouseLeave={() => {
-            if (videoRef.current) {
-              videoRef.current.pause()
-              videoRef.current.currentTime = 0
-            }
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-navy/70 via-navy/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        <span className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-cyan text-navy text-[10px] tracking-[0.12em] uppercase font-bold shadow-sm">
-          {project.city}
-        </span>
-        <span className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white text-navy text-xs font-bold flex items-center justify-center shadow-md">
-          {String(index + 1).padStart(2, '0')}
-        </span>
-        <div className="absolute bottom-4 left-4 right-4 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
-          <span className="text-white/80 text-[10px] tracking-[0.2em] uppercase font-semibold">
-            {project.category}
-          </span>
-        </div>
-      </div>
+      <div className="w-full" style={{ perspective: '1200px' }}>
+        <motion.div
+          className="relative w-full aspect-[5/6] cursor-pointer"
+          style={{ transformStyle: 'preserve-3d' }}
+          animate={{ rotateY: flipped ? 180 : 0 }}
+          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+          onClick={handleCardClick}
+          data-cursor="pointer"
+        >
+        {/* Front — image + minimal info */}
+        <div
+          className="absolute inset-0 rounded-2xl overflow-hidden bg-navy shadow-lg shadow-navy/5"
+          style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+        >
+          <img
+            src={project.thumbnail}
+            alt={project.title}
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          />
+          <div className="absolute inset-x-0 bottom-0 h-[50%] bg-gradient-to-t from-navy/70 via-navy/30 to-transparent" />
 
-      <div className="p-6 lg:p-7">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="font-display text-xl font-bold text-navy group-hover:text-cyan transition-colors duration-300">
+          <span className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-cyan text-navy text-[10px] tracking-[0.12em] uppercase font-bold shadow-sm">
+            {project.city}
+          </span>
+          <span className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/95 text-navy text-xs font-bold flex items-center justify-center shadow-md">
+            {String(index + 1).padStart(2, '0')}
+          </span>
+
+          <div className="absolute bottom-0 left-0 right-0 p-5 lg:p-6">
+            <h3 className="font-display text-lg lg:text-xl font-bold text-white leading-tight line-clamp-2">
               {project.title}
             </h3>
-            <p className="text-slate text-xs mt-1.5">{project.location}</p>
+            <p className="text-white/60 text-xs mt-1.5 font-light tracking-wide">
+              {project.location}
+            </p>
+            <span className="inline-flex items-center gap-2 mt-3 text-cyan text-[10px] tracking-[0.2em] uppercase font-semibold opacity-80">
+              <span className="w-6 h-px bg-cyan" />
+              Hover to explore
+            </span>
           </div>
-          <span className="text-slate-light text-xs font-semibold shrink-0">{project.year}</span>
         </div>
-        <p className="text-slate text-sm mt-3 line-clamp-2 leading-relaxed font-light">
-          {project.description}
-        </p>
+
+        {/* Back — full project details */}
+        <div
+          className="absolute inset-0 rounded-2xl overflow-hidden border border-cyan/30 bg-navy flex flex-col p-5 lg:p-6"
+          style={{
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)',
+          }}
+        >
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div className="min-w-0">
+              <span className="text-[9px] tracking-[0.18em] uppercase text-cyan font-bold">
+                {project.category}
+              </span>
+              <h3 className="font-display text-base lg:text-lg font-bold text-white mt-1 leading-tight line-clamp-2">
+                {project.title}
+              </h3>
+            </div>
+            <span className="text-cyan/80 text-[10px] font-bold shrink-0">{project.year}</span>
+          </div>
+
+          <div className="space-y-2.5 flex-1 min-h-0 overflow-hidden">
+            <div className="flex items-center gap-1.5 text-white/50 text-[10px]">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+              </svg>
+              <span className="line-clamp-1">{project.location}</span>
+            </div>
+
+            <p className="text-white/70 text-sm leading-relaxed font-light line-clamp-4">
+              {project.description}
+            </p>
+
+            <div>
+              <p className="text-[9px] tracking-[0.12em] uppercase text-white/35 font-semibold mb-1">
+                Client
+              </p>
+              <p className="text-white/80 text-xs font-medium line-clamp-1">{project.client}</p>
+            </div>
+
+            <div>
+              <p className="text-[9px] tracking-[0.12em] uppercase text-white/35 font-semibold mb-1.5">
+                Services
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {project.services.slice(0, 3).map((service) => (
+                  <span
+                    key={service}
+                    className="px-2 py-0.5 rounded-full bg-cyan/15 border border-cyan/25 text-cyan text-[9px] font-medium"
+                  >
+                    {service}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpen(project)
+            }}
+            className="mt-4 w-full py-3 rounded-full bg-cyan text-navy text-xs font-bold tracking-[0.12em] uppercase hover:bg-cyan-bright transition-colors duration-300 flex items-center justify-center gap-2"
+            data-cursor="pointer"
+          >
+            View Full Project
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </button>
+        </div>
+        </motion.div>
       </div>
-    </motion.button>
+    </div>
   )
 }
 
@@ -163,11 +226,10 @@ export function Portfolio() {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         cards,
-        { opacity: 0, y: 48, scale: 0.94 },
+        { opacity: 0, y: 40 },
         {
           opacity: 1,
           y: 0,
-          scale: 1,
           duration: 0.75,
           stagger: {
             each: 0.08,
@@ -184,9 +246,13 @@ export function Portfolio() {
 
   return (
     <>
-      <section id="portfolio" className="relative z-0 py-24 lg:py-32 bg-off-white overflow-hidden" aria-label="Portfolio">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-          <div ref={headerRef} className="mb-12 lg:mb-16">
+      <section
+        id="portfolio"
+        className="relative z-0 py-20 lg:py-28 bg-off-white overflow-hidden"
+        aria-label="Portfolio"
+      >
+        <div className="w-full px-5 sm:px-8 lg:px-10 xl:px-14">
+          <div ref={headerRef} className="mb-10 lg:mb-14">
             <span className="text-[11px] tracking-[0.35em] uppercase text-cyan font-bold">
               Portfolio
             </span>
@@ -195,14 +261,22 @@ export function Portfolio() {
               <span className="text-cyan">{cities.length} cities</span>
             </h2>
             <p className="text-slate text-base mt-4 max-w-xl font-light leading-relaxed">
-              Browse property marketing films and aerial showcases by city — from Mumbai skylines to Goa coastlines.
+              Hover a card to reveal project details — click to open the full showcase.
             </p>
           </div>
 
-          <div ref={tabsRef} className="flex flex-wrap gap-2 mb-10 lg:mb-14" role="tablist" aria-label="Filter by city">
+          <div
+            ref={tabsRef}
+            className="flex flex-wrap gap-2 mb-10 lg:mb-12"
+            role="tablist"
+            aria-label="Filter by city"
+          >
             {(['All', ...cities] as const).map((city) => {
               const isActive = activeCity === city
-              const count = city === 'All' ? projects.length : projects.filter((p) => p.city === city).length
+              const count =
+                city === 'All'
+                  ? projects.length
+                  : projects.filter((p) => p.city === city).length
 
               return (
                 <button
@@ -229,7 +303,7 @@ export function Portfolio() {
           <div
             ref={gridRef}
             key={activeCity}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8"
           >
             {filtered.map((project, i) => (
               <PortfolioCard

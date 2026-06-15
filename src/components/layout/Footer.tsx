@@ -1,53 +1,107 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { MagneticButton } from '../ui/Motion'
+import { ProjectInquiryModal } from '../ui/ProjectInquiryModal'
 import { usePrefersReducedMotion } from '../../hooks/useMotion'
+import { cn } from '../../lib/utils'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const navLinks = [
   { label: 'Home', href: '#home' },
-  { label: 'Selected Work', href: '#offset-carousel' },
-  { label: 'Services', href: '#what-we-offer' },
   { label: 'Portfolio', href: '#portfolio' },
-]
-
-const serviceLinks = [
-  'Drone Cinematography',
-  'Real Estate Photography',
-  'Brand Films',
-  'Social Media Content',
 ]
 
 const socialLinks = [
   {
-    label: 'Instagram',
-    href: 'https://instagram.com',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.9.3 2.3.5.6.2 1 .5 1.5 1 .5.5.8 1 1 1.5.2.5.4 1.1.5 2.3.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 1.9-.5 2.3-.2.6-.5 1-.9 1.5-.5.5-1 .8-1.5 1-.5.2-1.1.4-2.3.5-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.9-.3-2.3-.5-.6-.2-1-.5-1.5-1-.5-.5-.8-1-1-1.5-.2-.5-.4-1.1-.5-2.3C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.3-1.9.5-2.3.2-.6.5-1 .9-1.5.5-.5 1-.8 1.5-1 .5-.2 1.1-.4 2.3-.5C8.4 2.2 8.8 2.2 12 2.2m0-2.2C8.7 0 8.3 0 7 0.1 5.7.2 4.8.4 4.1.7c-.8.3-1.4.7-2 1.3-.6.6-1 1.3-1.3 2-.3.7-.5 1.6-.6 2.9C0.1 8.3 0 8.7 0 12s0 3.7.1 5c.1 1.3.3 2.2.6 2.9.3.8.7 1.4 1.3 2 .6.6 1.3 1 2 1.3.7.3 1.6.5 2.9.6 1.3.1 1.7.1 5 .1s3.7 0 5-.1c1.3-.1 2.2-.3 2.9-.6.8-.3 1.4-.7 2-1.3.6-.6 1-1.3 1.3-2 .3-.7.5-1.6.6-2.9.1-1.3.1-1.7.1-5s0-3.7-.1-5c-.1-1.3-.3-2.2-.6-2.9-.3-.8-.7-1.4-1.3-2-.6-.6-1.3-1-2-1.3-.7-.3-1.6-.5-2.9-.6C15.7 0 15.3 0 12 0z" />
-        <path d="M12 5.8a6.2 6.2 0 100 12.4 6.2 6.2 0 000-12.4zm0 10.2a4 4 0 110-8 4 4 0 010 8z" />
-        <circle cx="18.4" cy="5.6" r="1.4" />
-      </svg>
-    ),
-  },
-  {
     label: 'LinkedIn',
-    href: 'https://linkedin.com',
+    href: 'https://linkedin.com/company/nsventures',
     icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
         <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.6c0-1.1-.02-2.5-1.5-2.5-1.5 0-1.7 1.2-1.7 2.4V19h-3v-9h2.9v1.2h.04a3.2 3.2 0 012.9-1.6c3.1 0 3.7 2 3.7 4.6V19z" />
       </svg>
     ),
   },
   {
-    label: 'YouTube',
-    href: 'https://youtube.com',
+    label: 'Facebook',
+    href: 'https://facebook.com/nsventures',
     icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.6 3.6 12 3.6 12 3.6s-7.6 0-9.4.5A3 3 0 00.5 6.2 31.6 31.6 0 000 12a31.6 31.6 0 00.5 5.8 3 3 0 002.1 2.1c1.8.5 9.4.5 9.4.5s7.6 0 9.4-.5a3 3 0 002.1-2.1A31.6 31.6 0 0024 12a31.6 31.6 0 00-.5-5.8zM9.6 15.6V8.4L15.8 12l-6.2 3.6z" />
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Instagram',
+    href: 'https://instagram.com/nsventures',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'YouTube',
+    href: 'https://youtube.com/@nsventures',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'X',
+    href: 'https://x.com/nsventures',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Pinterest',
+    href: 'https://pinterest.com/nsventures',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M12 0C5.373 0 0 5.372 0 12c0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12 24c6.627 0 12-5.373 12-12 0-6.628-5.373-12-12-12z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Vimeo',
+    href: 'https://vimeo.com/nsventures',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M23.977 6.416c-.105 2.338-1.739 5.543-4.894 9.609-3.268 4.247-6.026 6.37-8.29 6.37-1.409 0-2.578-1.294-3.553-3.881L5.322 11.4C4.603 8.816 3.834 7.522 3.01 7.522c-.179 0-.806.378-1.881 1.132L0 7.197c1.185-1.044 2.351-2.084 3.501-3.128C5.08 2.701 6.266 1.984 7.055 1.91c1.867-.18 3.016 1.1 3.447 3.838.466 2.953.789 4.789.971 5.507.539 2.45 1.131 3.674 1.776 3.674.502 0 1.256-.796 2.265-2.385 1.004-1.589 1.54-2.797 1.612-3.628.144-1.371-.395-2.061-1.614-2.061-.574 0-1.167.121-1.777.391 1.186-3.819 3.436-5.673 6.762-5.559 2.473.08 3.778 1.52 3.892 4.294z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Behance',
+    href: 'https://behance.net/nsventures',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M22 7h-7V5h7v2zm1.726 10c-.442 2.391-2.777 4.004-5.726 4.004H0V4h12.837c2.855 0 5.15 1.66 5.15 4.855 0 2.22-1.214 3.942-3.066 4.66C20.94 14.408 22 16.156 22 18.5c0 .933-.274 1.85-.774 2.5zM7.5 11.5h5.5c.966 0 1.75-.784 1.75-1.75S13.966 8 13 8H7.5v3.5zm6 5.5H7.5V14H14c.966 0 1.75.784 1.75 1.75S14.966 17.5 14 17.5z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Tumblr',
+    href: 'https://tumblr.com/nsventures',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M14.563 24c-5.093 0-7.031-3.756-7.031-6.411V9.747H3.506V6.648c3.63-1.313 4.512-4.596 4.71-6.469C8.242 0 9.85 0 9.85 0h3.131v5.337h4.969v3.823h-4.969v7.48c.016 1.001.375 2.371 2.207 2.371h.09c.631-.02 1.486-.205 1.936-.419l1.156 3.425c-.436.636-2.4 1.374-4.156 1.404h-.178l.011.043z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Google',
+    href: 'https://g.page/nsventures',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 10.36H12v-2.73h6.5c.09.55.14 1.12.14 1.72 0 2.01-.54 3.9-1.49 5.52L12 14.77v-2.73l4.64 2.68A6.96 6.96 0 0016.64 12.36z" />
       </svg>
     ),
   },
@@ -60,6 +114,76 @@ function LogoMark({ className }: { className?: string }) {
       <path d="M16 8L22 11.5V18.5L16 22L10 18.5V11.5L16 8Z" fill="currentColor" opacity="0.5" />
       <path d="M16 12L19 13.75V17.25L16 19L13 17.25V13.75L16 12Z" fill="currentColor" />
     </svg>
+  )
+}
+
+function SectionHeading({
+  children,
+  align = 'left',
+}: {
+  children: ReactNode
+  align?: 'left' | 'center' | 'right'
+}) {
+  return (
+    <h3
+      className={cn(
+        'text-[11px] tracking-[0.3em] uppercase text-cyan font-bold mb-5',
+        align === 'center' && 'text-center w-full',
+        align === 'right' && 'md:text-right',
+      )}
+    >
+      {children}
+    </h3>
+  )
+}
+
+const socialContainer = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+  },
+}
+
+const socialItem = {
+  hidden: { opacity: 0, y: 14, scale: 0.85 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] as const },
+  },
+}
+
+function SocialGrid() {
+  return (
+    <motion.div
+      className="grid grid-cols-5 gap-3 sm:gap-4"
+      variants={socialContainer}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: '-40px' }}
+    >
+      {socialLinks.map((social) => (
+        <motion.a
+          key={social.label}
+          href={social.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={social.label}
+          title={social.label}
+          variants={socialItem}
+          className="group relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-white/12 bg-white/[0.04] text-white/70 transition-colors duration-300 hover:border-cyan/50 hover:bg-cyan/10 hover:text-cyan hover:shadow-lg hover:shadow-cyan/20"
+          whileHover={{ scale: 1.12, y: -3 }}
+          whileTap={{ scale: 0.94 }}
+          data-cursor="pointer"
+        >
+          <span className="absolute inset-0 rounded-full bg-cyan/20 scale-0 group-hover:scale-100 opacity-0 group-hover:opacity-100 transition-all duration-300 blur-md" />
+          <span className="relative [&_svg]:w-[18px] [&_svg]:h-[18px] sm:[&_svg]:w-5 sm:[&_svg]:h-5">
+            {social.icon}
+          </span>
+        </motion.a>
+      ))}
+    </motion.div>
   )
 }
 
@@ -96,10 +220,10 @@ function FooterLink({
 }
 
 export function Footer() {
+  const [inquiryOpen, setInquiryOpen] = useState(false)
   const footerRef = useRef<HTMLElement>(null)
   const ctaRef = useRef<HTMLDivElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
-  const wordmarkRef = useRef<HTMLDivElement>(null)
   const lineRef = useRef<HTMLDivElement>(null)
   const reducedMotion = usePrefersReducedMotion()
 
@@ -138,23 +262,6 @@ export function Footer() {
             scrollTrigger: {
               trigger: gridRef.current,
               start: 'top 90%',
-              once: true,
-            },
-          },
-        )
-      }
-
-      if (wordmarkRef.current) {
-        gsap.fromTo(
-          wordmarkRef.current,
-          { yPercent: 16 },
-          {
-            yPercent: 0,
-            duration: 0.9,
-            ease: 'power3.out',
-            scrollTrigger: {
-              trigger: wordmarkRef.current,
-              start: 'top 94%',
               once: true,
             },
           },
@@ -234,7 +341,7 @@ export function Footer() {
               <MagneticButton
                 variant="primary"
                 size="md"
-                onClick={() => window.open('mailto:hello@nsventures.in', '_self')}
+                onClick={() => setInquiryOpen(true)}
                 data-cursor="pointer"
               >
                 Start a Project
@@ -256,15 +363,17 @@ export function Footer() {
           className="h-px w-full bg-gradient-to-r from-cyan/30 via-cyan/20 to-transparent origin-left mb-8 lg:mb-10"
         />
 
-        <div ref={gridRef} className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 mb-8 lg:mb-10">
-          <div className="col-span-2 lg:col-span-1">
+        <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-12 items-start mb-8 lg:mb-10">
+          {/* Brand */}
+          <div>
+            <SectionHeading>Company</SectionHeading>
             <a
               href="#home"
               onClick={(e) => {
                 e.preventDefault()
                 document.getElementById('home')?.scrollIntoView({ behavior: 'smooth' })
               }}
-              className="inline-flex items-center gap-2 text-cyan mb-4"
+              className="inline-flex items-center gap-2 text-cyan mb-3"
               data-cursor="pointer"
             >
               <LogoMark />
@@ -272,16 +381,10 @@ export function Footer() {
                 NS <span className="text-cyan">VENTURES</span>
               </span>
             </a>
-            <p className="text-white/45 text-xs leading-relaxed font-light max-w-sm">
+            <p className="text-white/45 text-xs leading-relaxed font-light max-w-xs">
               Premium real estate cinematography, drone aerials, and brand films for developers across India.
             </p>
-          </div>
-
-          <div>
-            <h3 className="text-[10px] tracking-[0.25em] uppercase text-cyan font-bold mb-4">
-              Explore
-            </h3>
-            <ul className="space-y-2">
+            <ul className="flex flex-wrap gap-x-5 gap-y-2 mt-5">
               {navLinks.map((link) => (
                 <li key={link.href}>
                   <FooterLink href={link.href}>{link.label}</FooterLink>
@@ -290,90 +393,47 @@ export function Footer() {
             </ul>
           </div>
 
-          <div>
-            <h3 className="text-[10px] tracking-[0.25em] uppercase text-cyan font-bold mb-4">
-              Services
-            </h3>
-            <ul className="space-y-2">
-              {serviceLinks.map((label) => (
-                <li key={label}>
-                  <FooterLink href="#what-we-offer">{label}</FooterLink>
-                </li>
-              ))}
-            </ul>
+          {/* Social — center column */}
+          <div className="flex flex-col items-center md:px-2">
+            <SectionHeading align="center">Follow us</SectionHeading>
+            <SocialGrid />
           </div>
 
-          <div>
-            <h3 className="text-[10px] tracking-[0.25em] uppercase text-cyan font-bold mb-4">
-              Contact
-            </h3>
-            <ul className="space-y-2.5">
-              <li>
+          {/* Contact & address */}
+          <div className="md:text-right">
+            <SectionHeading align="right">Contact</SectionHeading>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-2.5 md:justify-end">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-cyan shrink-0 mt-0.5 md:order-2" aria-hidden>
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z" />
+                </svg>
+                <p className="text-white/70 text-sm font-light leading-relaxed md:text-right">
+                  Mumbai, Maharashtra<br />
+                  <span className="text-white/45 text-xs">Pan-India operations</span>
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row md:justify-end gap-3 sm:gap-6 pt-1">
                 <FooterLink href="mailto:hello@nsventures.in" external>
                   hello@nsventures.in
                 </FooterLink>
-              </li>
-              <li>
                 <FooterLink href="tel:+919876543210" external>
                   +91 98765 43210
                 </FooterLink>
-              </li>
-              <li>
-                <span className="text-white/45 text-xs font-light">Mumbai · Pan-India</span>
-              </li>
-            </ul>
-
-            <div className="flex gap-2.5 mt-5">
-              {socialLinks.map((social) => (
-                <motion.a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={social.label}
-                  className="w-8 h-8 rounded-full border border-white/15 flex items-center justify-center text-white/50 hover:text-cyan hover:border-cyan/50 hover:bg-cyan/10 transition-colors duration-300"
-                  whileHover={{ scale: 1.06, y: -1 }}
-                  whileTap={{ scale: 0.95 }}
-                  data-cursor="pointer"
-                >
-                  {social.icon}
-                </motion.a>
-              ))}
+              </div>
             </div>
           </div>
-        </div>
-
-        <div ref={wordmarkRef} className="overflow-hidden mb-6">
-          <p
-            className="font-display font-bold text-white/[0.05] leading-none select-none pointer-events-none whitespace-nowrap"
-            style={{ fontSize: 'clamp(2rem, 8vw, 5rem)' }}
-            aria-hidden
-          >
-            NS VENTURES
-          </p>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-5 border-t border-white/10">
           <p className="text-white/35 text-[11px] font-light">
             © {new Date().getFullYear()} NS Ventures. All rights reserved.
           </p>
-          <div className="flex flex-wrap items-center gap-4 sm:gap-5">
-            <FooterLink href="#">Privacy</FooterLink>
-            <FooterLink href="#">Terms</FooterLink>
-            <motion.button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="text-[11px] tracking-[0.2em] uppercase text-cyan font-semibold flex items-center gap-2"
-              whileHover={{ y: -2 }}
-              data-cursor="pointer"
-            >
-              Back to top
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M12 4l-8 8h5v8h6v-8h5z" />
-              </svg>
-            </motion.button>
-          </div>
         </div>
       </div>
+
+      <ProjectInquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
     </footer>
   )
 }
