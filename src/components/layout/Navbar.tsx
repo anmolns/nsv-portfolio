@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useScrollPosition } from '../../hooks/useMotion'
 import { cn } from '../../lib/utils'
 import { contact } from '../../data/contact'
+import { scrollToPortfolioFilter } from '../../lib/portfolioNav'
 import { Logo } from '../ui/Logo'
 
 export function Navbar() {
@@ -43,26 +44,26 @@ export function Navbar() {
 
         <div className="flex items-center gap-3">
           <a
-            href="#portfolio"
+            href="#video"
             onClick={(e) => {
               e.preventDefault()
-              document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })
+              scrollToPortfolioFilter('video')
             }}
             className="hidden sm:inline-flex text-xs font-semibold tracking-wide uppercase text-white/70 hover:text-cyan transition-colors duration-300"
             data-cursor="pointer"
           >
-            Portfolio
+            Video
           </a>
           <a
-            href="#contact"
+            href="#virtual-tours"
             onClick={(e) => {
               e.preventDefault()
-              document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })
+              scrollToPortfolioFilter('virtual-tour')
             }}
             className="hidden md:inline-flex text-xs font-semibold tracking-wide uppercase text-white/70 hover:text-cyan transition-colors duration-300"
             data-cursor="pointer"
           >
-            Contact
+            Virtual Tours
           </a>
           <motion.a
             href={contact.phoneTel}

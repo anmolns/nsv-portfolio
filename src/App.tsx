@@ -82,7 +82,7 @@ function App() {
 
       <Suspense fallback={null}>
 
-        <Footer onInquiryClick={() => setInquiryOpen(true)} />
+        <Footer />
 
         <FloatingActions />
 

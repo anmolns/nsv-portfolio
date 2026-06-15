@@ -3,6 +3,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion } from 'framer-motion'
 import { MagneticButton } from '../ui/Motion'
+import { scrollToPortfolioFilter } from '../../lib/portfolioNav'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -82,9 +83,7 @@ export function Hero({ onInquiryClick }: HeroProps) {
     }
   }, [])
 
-  const scrollToPortfolio = () => {
-    document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const scrollToPortfolio = () => scrollToPortfolioFilter('video')
 
   return (
     <section

@@ -1,3 +1,5 @@
+export type ProjectMediaType = 'video' | 'virtual-tour'
+
 export type ProjectCategory =
   | 'Luxury Villas'
   | 'Apartments'
@@ -11,11 +13,13 @@ export interface Project {
   city: string
   location: string
   category: ProjectCategory
+  mediaType: ProjectMediaType
   description: string
   client: string
   services: string[]
   thumbnail: string
   videoUrl: string
+  virtualTourUrl?: string
   images: string[]
   featured?: boolean
   year: string
@@ -28,6 +32,7 @@ export const projects: Project[] = [
     city: 'Goa',
     location: 'Goa, India',
     category: 'Luxury Villas',
+    mediaType: 'video',
     description:
       'A cinematic brand film capturing coastal luxury living — golden hour aerials, intimate interior narratives, and a narrative arc designed for high-net-worth buyers.',
     client: 'Azure Developers Pvt. Ltd.',
@@ -47,6 +52,7 @@ export const projects: Project[] = [
     city: 'Mumbai',
     location: 'Mumbai, India',
     category: 'Apartments',
+    mediaType: 'video',
     description:
       'A vertical lifestyle story for a premium residential tower — lobby-to-penthouse journey with precision lighting and architectural emphasis.',
     client: 'Meridian Realty Group',
@@ -66,6 +72,7 @@ export const projects: Project[] = [
     city: 'Bangalore',
     location: 'Bangalore, India',
     category: 'Commercial',
+    mediaType: 'video',
     description:
       'Corporate-grade visual identity for a Grade-A commercial development — emphasizing scale, connectivity, and investment potential.',
     client: 'Obsidian Infrastructure',
@@ -84,6 +91,7 @@ export const projects: Project[] = [
     city: 'Hyderabad',
     location: 'Hyderabad, India',
     category: 'Drone Shoots',
+    mediaType: 'video',
     description:
       'Sweeping FPV and cinematic drone sequences across a 200-acre township — revealing master planning from perspectives impossible on ground.',
     client: 'Skyline Urban Projects',
@@ -102,6 +110,7 @@ export const projects: Project[] = [
     city: 'Pune',
     location: 'Pune, India',
     category: 'Luxury Villas',
+    mediaType: 'video',
     description:
       'An editorial approach to villa marketing — slow, deliberate camera movement through landscaped gardens and bespoke interiors.',
     client: 'Verde Living',
@@ -120,6 +129,7 @@ export const projects: Project[] = [
     city: 'Delhi NCR',
     location: 'Delhi NCR, India',
     category: 'Marketing Campaigns',
+    mediaType: 'virtual-tour',
     description:
       'Multi-format launch campaign spanning hero films, social cutdowns, and investor decks — unified under a single visual language.',
     client: 'Horizon Properties',
@@ -138,6 +148,7 @@ export const projects: Project[] = [
     city: 'Chennai',
     location: 'Chennai, India',
     category: 'Apartments',
+    mediaType: 'virtual-tour',
     description:
       'Refined apartment showcase with emphasis on lifestyle amenities — pool, clubhouse, and panoramic city views.',
     client: 'Crown Developers',
@@ -156,6 +167,7 @@ export const projects: Project[] = [
     city: 'Jaipur',
     location: 'Jaipur, India',
     category: 'Drone Shoots',
+    mediaType: 'virtual-tour',
     description:
       'Desert-edge luxury development captured through golden-hour aerial cinematography and precision orbit shots.',
     client: 'Terra Vista Group',
@@ -174,6 +186,7 @@ export const projects: Project[] = [
     city: 'Kochi',
     location: 'Kochi, India',
     category: 'Luxury Villas',
+    mediaType: 'video',
     description:
       'Backwater-edge villa community filmed through misty dawn sequences and warm interior walkthroughs for NRI buyers.',
     client: 'Palm Grove Developers',
@@ -192,6 +205,7 @@ export const projects: Project[] = [
     city: 'Pune',
     location: 'Pune, India',
     category: 'Apartments',
+    mediaType: 'virtual-tour',
     description:
       'Waterfront apartment launch film blending lifestyle amenities with lake-view aerial establishing shots.',
     client: 'Lakefront Homes',
@@ -210,6 +224,7 @@ export const projects: Project[] = [
     city: 'Mumbai',
     location: 'Mumbai, India',
     category: 'Commercial',
+    mediaType: 'video',
     description:
       'High-rise commercial park showcase highlighting connectivity, scale, and premium tenant-ready spaces for investors.',
     client: 'Zenith Corp Parks',
@@ -228,6 +243,7 @@ export const projects: Project[] = [
     city: 'Ahmedabad',
     location: 'Ahmedabad, India',
     category: 'Commercial',
+    mediaType: 'virtual-tour',
     description:
       'Mixed-use riverfront development captured through dynamic day-to-night timelapse and investor-focused narrative.',
     client: 'Sabarmati Developers',
@@ -245,6 +261,7 @@ export const projects: Project[] = [
     city: 'Kolkata',
     location: 'Kolkata, India',
     category: 'Apartments',
+    mediaType: 'video',
     description:
       'Heritage-inspired residential tower with classical architectural details and warm, inviting interior sequences.',
     client: 'Heritage Buildcon',
@@ -260,9 +277,31 @@ export const projects: Project[] = [
 
 export const carouselProjects = projects.filter((p) => p.featured)
 
-export const cities = [
-  ...new Set(projects.map((p) => p.city)),
-].sort() as string[]
+export const metroCities = [
+  'Ahmedabad',
+  'Bangalore',
+  'Bhopal',
+  'Chandigarh',
+  'Chennai',
+  'Coimbatore',
+  'Delhi NCR',
+  'Goa',
+  'Gurgaon',
+  'Hyderabad',
+  'Indore',
+  'Jaipur',
+  'Kochi',
+  'Kolkata',
+  'Lucknow',
+  'Mumbai',
+  'Nagpur',
+  'Noida',
+  'Pune',
+  'Surat',
+  'Visakhapatnam',
+] as const
+
+export const cities = [...metroCities] as string[]
 
 export const categories: ProjectCategory[] = [
   'Luxury Villas',
