@@ -156,7 +156,7 @@ export function Hero() {
         </motion.div>
       </div>
 
-      <motion.div
+      {/* <motion.div
         className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-3"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -172,7 +172,7 @@ export function Hero() {
         >
           <div className="w-1.5 h-2.5 rounded-full bg-cyan" />
         </motion.div>
-      </motion.div>
+      </motion.div> */}
     </section>
   )
 }
