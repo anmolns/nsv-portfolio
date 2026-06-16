@@ -1,16 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import { metroCities } from '../../data/projects'
 import { usePortfolio } from '../../hooks/usePortfolio'
-import { useGridColumns } from '../../hooks/useGridColumns'
 import { parseMediaFilter } from '../../lib/portfolioNav'
 import type { PortfolioEntry, PortfolioMediaType } from '../../types/portfolio'
 import { PortfolioCard } from '../ui/PortfolioCard'
 import { PortfolioVideoModal } from '../ui/PortfolioVideoModal'
 import { openPortfolioEntry } from '../../lib/openPortfolioLink'
-
-const ROW_GAP = 16
-const ROW_HEIGHT_ESTIMATE = 168
 
 export function Portfolio() {
   const [activeCity, setActiveCity] = useState<string>('All')
@@ -18,16 +13,7 @@ export function Portfolio() {
     parseMediaFilter(window.location.hash),
   )
   const [videoEntry, setVideoEntry] = useState<PortfolioEntry | null>(null)
-  const [scrollMargin, setScrollMargin] = useState(0)
-  const sectionRef = useRef<HTMLElement>(null)
-  const columns = useGridColumns()
-
-  useEffect(() => {
-    const update = () => setScrollMargin(sectionRef.current?.offsetTop ?? 0)
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [])
+  const loadMoreRef = useRef<HTMLDivElement>(null)
 
   const { items, cityCounts, total, hasMore, loading, loadingMore, error, loadMore, retry } =
     usePortfolio({ city: activeCity, mediaType: mediaFilter })
@@ -46,29 +32,25 @@ export function Portfolio() {
     }
   }, [])
 
+  useEffect(() => {
+    const sentinel = loadMoreRef.current
+    if (!sentinel || !hasMore || loading || loadingMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore()
+      },
+      { rootMargin: '400px' },
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore, loadMore, items.length])
+
   const handleOpen = (entry: PortfolioEntry) => {
     const result = openPortfolioEntry(entry)
     if (result === 'video-modal') setVideoEntry(entry)
   }
-
-  const rowCount = Math.ceil(items.length / columns) || 0
-
-  const rowVirtualizer = useVirtualizer({
-    count: rowCount,
-    getScrollElement: () => document.documentElement,
-    estimateSize: () => ROW_HEIGHT_ESTIMATE + ROW_GAP,
-    overscan: 4,
-    scrollMargin,
-  })
-
-  const virtualRows = rowVirtualizer.getVirtualItems()
-
-  useEffect(() => {
-    const lastRow = virtualRows[virtualRows.length - 1]
-    if (lastRow && lastRow.index >= rowCount - 2 && hasMore && !loading && !loadingMore) {
-      loadMore()
-    }
-  }, [virtualRows, rowCount, hasMore, loading, loadingMore, loadMore])
 
   const getCityCount = (city: string) => {
     if (city === 'All') return total
@@ -79,7 +61,6 @@ export function Portfolio() {
     <>
       <section
         id="portfolio"
-        ref={sectionRef}
         className="relative z-0 pt-10 pb-12 lg:pt-12 lg:pb-16 bg-off-white overflow-hidden scroll-mt-24"
         aria-label="Portfolio"
       >
@@ -132,7 +113,7 @@ export function Portfolio() {
 
           {loading && items.length === 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
-              {Array.from({ length: columns * 2 }).map((_, i) => (
+              {Array.from({ length: 12 }).map((_, i) => (
                 <div
                   key={i}
                   className="aspect-[4/3] rounded-xl bg-navy/5 animate-pulse"
@@ -143,41 +124,14 @@ export function Portfolio() {
           ) : items.length === 0 ? (
             <p className="text-center text-slate py-12 text-sm">No projects in this city yet.</p>
           ) : (
-            <div
-              className="relative w-full"
-              style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
-            >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const rowIndex = virtualRow.index
-                const start = rowIndex * columns
-
-                return (
-                  <div
-                    key={virtualRow.key}
-                    className="absolute left-0 w-full grid gap-3 lg:gap-4"
-                    style={{
-                      top: virtualRow.start - rowVirtualizer.options.scrollMargin,
-                      height: virtualRow.size,
-                      gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-                    }}
-                  >
-                    {Array.from({ length: columns }).map((_, columnIndex) => {
-                      const entry = items[start + columnIndex]
-                      if (!entry) return <div key={columnIndex} aria-hidden />
-
-                      return (
-                        <PortfolioCard
-                          key={entry.id}
-                          entry={entry}
-                          onOpen={handleOpen}
-                        />
-                      )
-                    })}
-                  </div>
-                )
-              })}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
+              {items.map((entry) => (
+                <PortfolioCard key={entry.id} entry={entry} onOpen={handleOpen} />
+              ))}
             </div>
           )}
+
+          <div ref={loadMoreRef} className="h-px" aria-hidden />
 
           {loadingMore && (
             <p className="text-center text-slate/60 text-xs py-6">Loading more…</p>
