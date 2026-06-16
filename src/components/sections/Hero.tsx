@@ -101,9 +101,9 @@ export function Hero() {
       <div className="absolute inset-0 bg-gradient-to-r from-navy from-0% via-navy/85 via-45% to-navy/30 to-100% pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-transparent to-navy/20 pointer-events-none" />
 
-      <div className="relative z-10 h-full flex flex-col justify-center max-w-[1400px] mx-auto px-6 lg:px-12 pt-24">
-        <h1 className="font-display text-[clamp(2.75rem,7.5vw,5.5rem)] font-bold text-white leading-[1.06] max-w-5xl">
-          <span className="block whitespace-nowrap">India´s Largest Real Estate</span>
+      <div className="relative z-10 flex h-full w-full min-w-0 flex-col justify-center max-w-[1400px] mx-auto px-5 sm:px-6 lg:px-12 pt-20 sm:pt-24">
+        <h1 className="font-display w-full min-w-0 text-[clamp(1.75rem,8vw,5.5rem)] font-bold text-white leading-[1.1] sm:text-[clamp(2.25rem,7vw,5.5rem)] lg:text-[clamp(2.75rem,7.5vw,5.5rem)]">
+          <span className="block sm:whitespace-nowrap">India´s Largest Real Estate</span>
           <span className="block text-cyan">Content Portfolio</span>
         </h1>
 
@@ -123,11 +123,11 @@ export function Hero() {
           initial="hidden"
           animate="visible"
           variants={fadeUp}
-          className="mt-10 flex flex-wrap gap-4"
+          className="mt-8 flex w-full min-w-0 flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:gap-4"
         >
           <MagneticButton
             size="lg"
-            className="text-base sm:text-lg"
+            className="w-full text-base sm:w-auto sm:text-lg"
             onClick={goToVideos}
             data-cursor="pointer"
           >
@@ -135,7 +135,7 @@ export function Hero() {
           </MagneticButton>
           <MagneticButton
             size="lg"
-            className="text-base sm:text-lg"
+            className="w-full text-base sm:w-auto sm:text-lg"
             variant="secondary"
             onClick={goToVirtualReality}
             data-cursor="pointer"
