@@ -124,7 +124,7 @@ export function Portfolio() {
           ) : items.length === 0 ? (
             <p className="text-center text-slate py-12 text-sm">No projects in this city yet.</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3  md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
               {items.map((entry) => (
                 <PortfolioCard key={entry.id} entry={entry} onOpen={handleOpen} />
               ))}
