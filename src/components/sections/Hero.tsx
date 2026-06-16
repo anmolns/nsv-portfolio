@@ -17,11 +17,7 @@ const fadeUp = {
   }),
 }
 
-interface HeroProps {
-  onInquiryClick?: () => void
-}
-
-export function Hero({ onInquiryClick }: HeroProps) {
+export function Hero() {
   const sectionRef = useRef<HTMLElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [videoReady, setVideoReady] = useState(false)
@@ -78,7 +74,8 @@ export function Hero({ onInquiryClick }: HeroProps) {
     }
   }, [])
 
-  const scrollToPortfolio = () => scrollToPortfolioFilter('video')
+  const goToVideos = () => scrollToPortfolioFilter('video')
+  const goToVirtualReality = () => scrollToPortfolioFilter('virtual-tour')
 
   return (
     <section
@@ -105,25 +102,12 @@ export function Hero({ onInquiryClick }: HeroProps) {
       <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-transparent to-navy/20 pointer-events-none" />
 
       <div className="relative z-10 h-full flex flex-col justify-center max-w-[1400px] mx-auto px-6 lg:px-12 pt-24">
-        <motion.div
-          custom={0}
-          initial="hidden"
-          animate="visible"
-          variants={fadeUp}
-          className="mb-6"
-        >
-          <span className="inline-flex items-center gap-3 text-[11px] tracking-[0.3em] uppercase text-cyan font-bold">
-            <span className="w-8 h-px bg-cyan" />
-            Property Marketing Portfolio
-          </span>
-        </motion.div>
-
-        <h1 className="font-display text-[clamp(2.2rem,6vw,4.5rem)] font-bold text-white leading-[1.08] max-w-4xl text-balance">
-          Transforming Properties Into{' '}
-          <span className="text-cyan">Stories That Sell</span>
+        <h1 className="font-display text-[clamp(2.75rem,7.5vw,5.5rem)] font-bold text-white leading-[1.06] max-w-5xl">
+          <span className="block whitespace-nowrap">India´s Largest Real Estate</span>
+          <span className="block text-cyan">Content Portfolio</span>
         </h1>
 
-        <motion.p
+        {/* <motion.p
           custom={1}
           initial="hidden"
           animate="visible"
@@ -132,7 +116,7 @@ export function Hero({ onInquiryClick }: HeroProps) {
         >
           Premium real estate marketing videos, aerial cinematography, and visual
           campaigns crafted for developers who demand excellence.
-        </motion.p>
+        </motion.p> */}
 
         <motion.div
           custom={2}
@@ -141,36 +125,25 @@ export function Hero({ onInquiryClick }: HeroProps) {
           variants={fadeUp}
           className="mt-10 flex flex-wrap gap-4"
         >
-          <MagneticButton onClick={scrollToPortfolio} data-cursor="pointer">
-            View Our Work
-          </MagneticButton>
           <MagneticButton
-            variant="secondary"
-            onClick={onInquiryClick}
+            size="lg"
+            className="text-base sm:text-lg"
+            onClick={goToVideos}
             data-cursor="pointer"
           >
-            Start a Project
+            Videos
+          </MagneticButton>
+          <MagneticButton
+            size="lg"
+            className="text-base sm:text-lg"
+            variant="secondary"
+            onClick={goToVirtualReality}
+            data-cursor="pointer"
+          >
+            Virtual Reality
           </MagneticButton>
         </motion.div>
       </div>
-
-      {/* <motion.div
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-3"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.2, duration: 0.8 }}
-      >
-        <span className="text-[10px] tracking-[0.3em] uppercase text-white/80 font-semibold">
-          Scroll to explore
-        </span>
-        <motion.div
-          className="w-6 h-10 rounded-full border-2 border-white/40 flex items-start justify-center p-1.5"
-          animate={{ y: [0, 6, 0] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <div className="w-1.5 h-2.5 rounded-full bg-cyan" />
-        </motion.div>
-      </motion.div> */}
     </section>
   )
 }

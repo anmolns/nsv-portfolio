@@ -71,10 +71,10 @@ function App() {
 
       <DeferredCursorFollower />
 
-      <Navbar />
+      <Navbar onInquiryClick={() => setInquiryOpen(true)} />
 
       <main id="main-content">
-        <Hero onInquiryClick={() => setInquiryOpen(true)} />
+        <Hero />
 
         <Suspense fallback={<div className="min-h-[50vh] bg-off-white" aria-hidden />}>
           <Portfolio />

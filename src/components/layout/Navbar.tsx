@@ -2,10 +2,13 @@ import { motion } from 'framer-motion'
 import { useScrollPosition } from '../../hooks/useMotion'
 import { cn } from '../../lib/utils'
 import { contact } from '../../data/contact'
-import { scrollToPortfolioFilter } from '../../lib/portfolioNav'
 import { Logo } from '../ui/Logo'
 
-export function Navbar() {
+interface NavbarProps {
+  onInquiryClick?: () => void
+}
+
+export function Navbar({ }: NavbarProps) {
   const scrolled = useScrollPosition()
 
   return (
@@ -43,38 +46,23 @@ export function Navbar() {
         </a>
 
         <div className="flex items-center gap-3">
-          <a
-            href="#video"
-            onClick={(e) => {
-              e.preventDefault()
-              scrollToPortfolioFilter('video')
-            }}
-            className="hidden sm:inline-flex text-xs font-semibold tracking-wide uppercase text-white/70 hover:text-cyan transition-colors duration-300"
-            data-cursor="pointer"
-          >
-            Video
-          </a>
-          <a
-            href="#virtual-tours"
-            onClick={(e) => {
-              e.preventDefault()
-              scrollToPortfolioFilter('virtual-tour')
-            }}
-            className="hidden md:inline-flex text-xs font-semibold tracking-wide uppercase text-white/70 hover:text-cyan transition-colors duration-300"
-            data-cursor="pointer"
-          >
-            Virtual Tours
-          </a>
-          <motion.a
-            href={contact.phoneTel}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-cyan text-navy text-sm font-bold shadow-lg shadow-cyan/25 hover:bg-cyan-bright transition-colors duration-300"
+          {/* <motion.button
+            type="button"
+            onClick={onInquiryClick}
+            className="inline-flex items-center px-4 py-2.5 rounded-full border border-white/35 bg-white/5 text-white text-xs sm:text-sm font-bold tracking-wide hover:border-cyan hover:text-cyan transition-colors duration-300"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             data-cursor="pointer"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1L6.6 10.8z" />
-            </svg>
+            Start Your Work
+          </motion.button> */}
+          <motion.a
+            href={contact.phoneTel}
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-full bg-cyan text-sm font-bold text-white shadow-lg shadow-cyan/25 hover:bg-cyan-bright transition-colors duration-300"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            data-cursor="pointer"
+          >
             {contact.phoneDisplay}
           </motion.a>
         </div>

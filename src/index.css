@@ -108,6 +108,47 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  .portfolio-card-back-shimmer {
+    background: linear-gradient(
+      105deg,
+      transparent 38%,
+      rgba(41, 171, 226, 0.12) 44%,
+      rgba(255, 255, 255, 0.18) 50%,
+      rgba(41, 171, 226, 0.12) 56%,
+      transparent 62%
+    );
+    background-size: 220% 100%;
+    animation: portfolio-shimmer 4s ease-in-out infinite;
+  }
+
+  @keyframes portfolio-shimmer {
+    0%,
+    100% {
+      background-position: 200% 0;
+    }
+    50% {
+      background-position: -200% 0;
+    }
+  }
+
+  .portfolio-card-glow-pulse {
+    animation: portfolio-glow-pulse 2.8s ease-in-out infinite;
+  }
+
+  @keyframes portfolio-glow-pulse {
+    0%,
+    100% {
+      opacity: 0.75;
+      transform: scale(1);
+      box-shadow: 0 0 12px rgba(41, 171, 226, 0.7);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.2);
+      box-shadow: 0 0 22px rgba(0, 174, 239, 1);
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

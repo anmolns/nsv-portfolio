@@ -21,6 +21,7 @@ export function PortfolioCard({
     getPortfolioThumbnail(entry.thumbnail),
   )
   const canHover = useMediaQuery('(hover: hover)')
+  const isVideo = entry.mediaType === 'video'
 
   const handleEnter = () => {
     if (canHover) setFlipped(true)
@@ -72,16 +73,33 @@ export function PortfolioCard({
           </div>
 
           <div
-            className="absolute inset-0 rounded-xl overflow-hidden bg-navy border border-cyan/25 flex items-center justify-center p-4"
+            className="absolute inset-0 overflow-hidden rounded-xl"
             style={{
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
               transform: 'rotateY(180deg)',
             }}
           >
-            <h3 className="font-display text-xs sm:text-sm font-bold text-white text-center leading-snug line-clamp-3">
-              {entry.name}
-            </h3>
+            <div className="absolute inset-0 bg-gradient-to-br from-navy-deep via-navy to-navy-card" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_110%,rgba(41,171,226,0.28),transparent_62%)]" />
+
+            <div className="relative z-10 flex h-full flex-col items-center justify-center px-3 py-3 text-center sm:px-4">
+              {/* {entry.city && entry.city !== 'Unknown' && (
+                <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.32em] text-cyan-bright/90 sm:text-xs">
+                  {entry.city}
+                </p>
+              )} */}
+
+              <h3 className="font-display line-clamp-3 max-w-[96%] text-lg font-extrabold leading-[1.15] tracking-[-0.02em] text-balance sm:text-xl md:text-2xl">
+                <span className="bg-gradient-to-b from-white via-white to-cyan-bright/90 bg-clip-text text-transparent">
+                  {entry.name}
+                </span>
+              </h3>
+
+              <p className="mt-3 text-xs font-medium uppercase tracking-[0.26em] text-white/45 sm:text-sm">
+                {isVideo ? 'Watch' : 'Virtual Tour'}
+              </p>
+            </div>
           </div>
         </motion.div>
       </div>
