@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils'
 interface MagneticButtonProps extends HTMLMotionProps<'button'> {
   children: ReactNode
   variant?: 'primary' | 'secondary' | 'ghost'
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
 const variants = {
@@ -20,6 +20,7 @@ const sizes = {
   sm: 'px-5 py-2.5 text-xs tracking-wide',
   md: 'px-7 py-3.5 text-sm tracking-wide',
   lg: 'px-9 py-4 text-sm tracking-wide',
+  xl: 'px-11 py-5 text-base tracking-wide sm:px-12 sm:py-5 sm:text-lg',
 }
 
 export function MagneticButton({

@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { metroCities } from '../../data/metroCities'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { parseMediaFilter } from '../../lib/portfolioNav'
 import type { PortfolioEntry, PortfolioMediaType } from '../../types/portfolio'
@@ -57,6 +56,11 @@ export function Portfolio() {
     return cityCounts[city] ?? 0
   }
 
+  const filterCities = useMemo(
+    () => Object.keys(cityCounts).sort((a, b) => a.localeCompare(b)),
+    [cityCounts],
+  )
+
   return (
     <>
       <section
@@ -70,7 +74,7 @@ export function Portfolio() {
             role="tablist"
             aria-label="Filter by city"
           >
-            {(['All', ...metroCities] as const).map((city) => {
+            {(['All', ...filterCities] as const).map((city) => {
               const isActive = activeCity === city
               const count = getCityCount(city)
 

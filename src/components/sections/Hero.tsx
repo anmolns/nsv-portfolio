@@ -126,7 +126,7 @@ export function Hero() {
           className="mt-8 flex w-full min-w-0 flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:gap-4"
         >
           <MagneticButton
-            size="lg"
+            size="xl"
             className="w-full text-base sm:w-auto sm:text-lg"
             onClick={goToVideos}
             data-cursor="pointer"
@@ -134,7 +134,7 @@ export function Hero() {
             Videos
           </MagneticButton>
           <MagneticButton
-            size="lg"
+            size="xl"
             className="w-full text-base sm:w-auto sm:text-lg"
             variant="secondary"
             onClick={goToVirtualReality}

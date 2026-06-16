@@ -40,7 +40,7 @@ export function Navbar({ }: NavbarProps) {
             size="md"
             className={cn(
               'transition-[height] duration-300',
-              scrolled ? 'h-9 sm:h-10' : 'h-10 sm:h-11 lg:h-12',
+              scrolled ? 'h-11 sm:h-12' : 'h-12 sm:h-14 lg:h-16',
             )}
           />
         </a>
@@ -58,7 +58,7 @@ export function Navbar({ }: NavbarProps) {
           </motion.button> */}
           <motion.a
             href={contact.phoneTel}
-            className="inline-flex shrink-0 items-center justify-center rounded-full bg-cyan px-3 py-2 text-[11px] font-bold text-white shadow-lg shadow-cyan/25 transition-colors duration-300 hover:bg-cyan-bright sm:px-5 sm:py-2.5 sm:text-sm"
+            className="inline-flex shrink-0 items-center justify-center rounded-full bg-cyan px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan/25 transition-colors duration-300 hover:bg-cyan-bright sm:px-6 sm:py-3 sm:text-base"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             data-cursor="pointer"

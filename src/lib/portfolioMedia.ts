@@ -1,3 +1,5 @@
+import { getTourThumbPublicUrl, isSupabaseConfigured } from './supabase'
+
 export const GENERIC_PORTFOLIO_THUMBNAIL = '/portfolio-placeholder.svg'
 
 export const PORTFOLIO_THUMB_WIDTH = 400
@@ -34,5 +36,8 @@ export function optimizeThumbnailUrl(url: string): string {
 export function getPortfolioThumbnail(thumbnail?: string | null): string {
   const value = thumbnail?.trim()
   if (!value) return GENERIC_PORTFOLIO_THUMBNAIL
+  if (value.startsWith('/')) return optimizeThumbnailUrl(value)
+  if (value.startsWith('http')) return optimizeThumbnailUrl(value)
+  if (isSupabaseConfigured()) return getTourThumbPublicUrl(value)
   return optimizeThumbnailUrl(value)
 }

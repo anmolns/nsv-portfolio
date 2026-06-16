@@ -6,10 +6,10 @@ type LogoProps = {
 }
 
 const sizeClasses = {
-  sm: 'h-8',
-  md: 'h-10',
-  lg: 'h-12',
-  xl: 'h-14',
+  sm: 'h-9',
+  md: 'h-11',
+  lg: 'h-14',
+  xl: 'h-16',
 } as const
 
 export function Logo({ className, size = 'md' }: LogoProps) {
