@@ -2,16 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion } from 'framer-motion'
+import { HERO_VIDEO, HERO_POSTER } from '../../constants/hero'
 import { MagneticButton } from '../ui/Motion'
 import { scrollToPortfolioFilter } from '../../lib/portfolioNav'
 
 gsap.registerPlugin(ScrollTrigger)
-
-const HERO_VIDEO =
-  'https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4'
-
-const HERO_POSTER =
-  'https://images.pexels.com/videos/3209828/pictures/preview-0.jpg?auto=compress&cs=tinysrgb&w=1280'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
