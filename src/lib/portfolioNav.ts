@@ -1,6 +1,6 @@
-import type { ProjectMediaType } from '../data/projects'
+import type { PortfolioMediaType } from '../types/portfolio'
 
-export function parseMediaFilter(hash: string): ProjectMediaType | 'all' {
+export function parseMediaFilter(hash: string): PortfolioMediaType | 'all' {
   if (hash === '#video') return 'video'
   if (hash === '#virtual-tours') return 'virtual-tour'
   return 'all'

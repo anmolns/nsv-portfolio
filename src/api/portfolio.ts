@@ -1,31 +1,18 @@
-import { projects, metroCities } from '../data/projects'
+import { metroCities } from '../data/metroCities'
 import importedTours from '../data/imported-tours.json'
 import type { PortfolioEntry, PortfolioMediaType, PortfolioPage, PortfolioQuery } from '../types/portfolio'
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? ''
 export const PORTFOLIO_PAGE_SIZE = 48
 
-function projectToEntry(project: (typeof projects)[number]): PortfolioEntry {
-  return {
-    id: project.id,
-    name: project.title,
-    link: project.virtualTourUrl ?? project.videoUrl,
-    thumbnail: project.thumbnail,
-    city: project.city,
-    mediaType: project.mediaType,
-  }
-}
-
-/** Local mock — paginates in memory until VITE_API_URL is set */
+/** Local data until VITE_API_URL is set */
 async function fetchPortfolioPageMock(query: PortfolioQuery): Promise<PortfolioPage> {
   await new Promise((r) => setTimeout(r, 120))
 
-  const imported = (importedTours as PortfolioEntry[]).map((item) => ({
+  let pool = (importedTours as PortfolioEntry[]).map((item) => ({
     ...item,
     mediaType: (item.mediaType ?? 'virtual-tour') as PortfolioMediaType,
   }))
-
-  let pool = [...projects.map(projectToEntry), ...imported]
 
   if (query.mediaType && query.mediaType !== 'all') {
     pool = pool.filter((item) => item.mediaType === query.mediaType)

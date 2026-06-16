@@ -19,7 +19,7 @@ const FloatingActions = lazy(() =>
 )
 
 const CursorFollower = lazy(() =>
-  import('./components/ui/ProjectModal').then((m) => ({ default: m.CursorFollower })),
+  import('./components/ui/CursorFollower').then((m) => ({ default: m.CursorFollower })),
 )
 
 const ProjectInquiryModal = lazy(() =>

@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { carouselProjects } from '../../data/projects'
-import type { Project } from '../../data/projects'
+import importedTours from '../../data/imported-tours.json'
+import type { PortfolioEntry } from '../../types/portfolio'
+import {
+  GENERIC_PORTFOLIO_THUMBNAIL,
+  getPortfolioThumbnail,
+} from '../../lib/portfolioMedia'
+
+const carouselTours = (importedTours as PortfolioEntry[]).slice(0, 8)
 
 gsap.registerPlugin(ScrollTrigger)
 
-function OffsetCard({ project, index }: { project: Project; index: number }) {
+function OffsetCard({ project, index }: { project: PortfolioEntry; index: number }) {
   const zigzag = index % 2 === 0 ? -64 : 64
 
   return (
@@ -17,23 +23,22 @@ function OffsetCard({ project, index }: { project: Project; index: number }) {
     >
       <div className="offset-card-inner relative aspect-[3/4] rounded-2xl overflow-hidden shadow-xl shadow-navy/10 bg-navy-card will-change-transform">
         <img
-          src={project.thumbnail}
-          alt={project.title}
+          src={getPortfolioThumbnail(project.thumbnail)}
+          alt={project.name}
           loading="eager"
           decoding="async"
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => {
-            e.currentTarget.src =
-              'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80'
+            e.currentTarget.src = GENERIC_PORTFOLIO_THUMBNAIL
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-navy/10 to-transparent opacity-0 offset-card-overlay transition-opacity duration-500 pointer-events-none" />
         <div className="absolute bottom-0 left-0 right-0 p-5 lg:p-6 translate-y-3 opacity-0 offset-card-caption transition-all duration-500 pointer-events-none">
           <p className="text-cyan text-[10px] tracking-[0.25em] uppercase font-semibold">
-            {project.location}
+            {project.city}
           </p>
           <h3 className="font-display text-lg lg:text-xl font-bold text-white mt-1">
-            {project.title}
+            {project.name}
           </h3>
         </div>
       </div>
@@ -184,7 +189,7 @@ export function OffsetCarousel() {
             </h2>
             <span className="text-navy/40 text-sm font-semibold tabular-nums shrink-0">
               {String(activeIndex + 1).padStart(2, '0')} /{' '}
-              {String(carouselProjects.length).padStart(2, '0')}
+              {String(carouselTours.length).padStart(2, '0')}
             </span>
           </div>
         </div>
@@ -198,14 +203,14 @@ export function OffsetCarousel() {
               paddingRight: 'max(1.5rem, calc(50vw - 190px))',
             }}
           >
-            {carouselProjects.map((project, i) => (
+            {carouselTours.map((project, i) => (
               <OffsetCard key={project.id} project={project} index={i} />
             ))}
           </div>
         </div>
 
         <p className="text-center text-slate text-xs mt-4 tracking-wide shrink-0">
-          Scroll to navigate · {carouselProjects.length} projects
+          Scroll to navigate · {carouselTours.length} tours
         </p>
       </div>
     </section>

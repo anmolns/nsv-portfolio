@@ -34,11 +34,36 @@ const NO_PAN = process.argv.includes('--no-pan')
 const THUMB_DIR = join(ROOT, 'public/tour-thumbs')
 const OUT_JSON = join(ROOT, 'src/data/imported-tours.json')
 
+function parseCsvLine(line) {
+  const cols = []
+  let cur = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"'
+        i++
+      } else {
+        inQuotes = !inQuotes
+      }
+    } else if (ch === ',' && !inQuotes) {
+      cols.push(cur.trim())
+      cur = ''
+    } else {
+      cur += ch
+    }
+  }
+  cols.push(cur.trim())
+  return cols
+}
+
 function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/).filter(Boolean)
   if (lines.length < 2) return []
 
-  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase())
+  const headers = parseCsvLine(lines[0]).map((h) => h.trim().toLowerCase())
   const linkIdx = headers.indexOf('link')
   const cityIdx = headers.indexOf('city')
   const nameIdx = headers.indexOf('name')
@@ -48,15 +73,15 @@ function parseCsv(text) {
   }
 
   return lines.slice(1).map((line, i) => {
-    const cols = line.split(',').map((c) => c.trim())
-    const link = cols[linkIdx]
+    const cols = parseCsvLine(line)
+    const link = cols[linkIdx]?.replace(/^"|"$/g, '')
     if (!link?.startsWith('http')) {
       throw new Error(`Row ${i + 2}: invalid link "${link}"`)
     }
     return {
       link,
-      city: cityIdx >= 0 ? cols[cityIdx] || 'Unknown' : 'Unknown',
-      name: nameIdx >= 0 ? cols[nameIdx] || '' : '',
+      city: cityIdx >= 0 ? (cols[cityIdx] || 'Unknown').replace(/^"|"$/g, '') : 'Unknown',
+      name: nameIdx >= 0 ? (cols[nameIdx] || '').replace(/^"|"$/g, '') : '',
     }
   })
 }

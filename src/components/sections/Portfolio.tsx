@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { metroCities } from '../../data/projects'
+import { metroCities } from '../../data/metroCities'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { parseMediaFilter } from '../../lib/portfolioNav'
 import type { PortfolioEntry, PortfolioMediaType } from '../../types/portfolio'

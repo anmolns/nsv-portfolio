@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "import:tours": "node scripts/import-tours.mjs"
+    "import:tours": "node scripts/import-tours.mjs",
+    "parse:tours": "node scripts/parse-vr-csv.mjs"
   },
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
