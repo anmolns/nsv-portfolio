@@ -7,11 +7,7 @@ import { cn } from '../../lib/utils'
 import { useAdminAuthContext } from '../context/AdminAuthContext'
 
 const navItems = [
-  {
-    to: '/admin',
-    label: 'Dashboard',
-    end: true,
-  },
+  { to: '/admin', label: 'Dashboard', end: true },
   {
     to: '/admin/tours',
     label: 'Portfolio',
@@ -19,11 +15,8 @@ const navItems = [
       pathname === '/admin/tours' ||
       (pathname.startsWith('/admin/tours/') && pathname !== '/admin/tours/new'),
   },
-  {
-    to: '/admin/tours/new',
-    label: 'Add tour',
-    end: true,
-  },
+  { to: '/admin/tours/new', label: 'Add tour', end: true },
+  { to: '/admin/cities', label: 'Cities', end: true },
 ] as const
 
 export function AdminLayout() {

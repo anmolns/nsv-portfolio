@@ -1,5 +1,11 @@
+import { slugify } from '../../lib/utils'
 import { getSupabase } from '../../lib/supabase'
-import type { CityRow, PortfolioItemRow, PortfolioStats } from '../types'
+import type {
+  CityRow,
+  CityWithCount,
+  PortfolioItemRow,
+  PortfolioStats,
+} from '../types'
 
 export async function fetchAdminCities(): Promise<CityRow[]> {
   const supabase = getSupabase()
@@ -133,4 +139,102 @@ export async function deleteTourThumbnail(path: string): Promise<void> {
   const normalized = path.replace(/^\/+/, '').replace(/^tour-thumbs\//, '')
   if (!normalized) return
   await supabase.storage.from('tour-thumbs').remove([normalized])
+}
+
+export async function fetchAllAdminCities(): Promise<CityWithCount[]> {
+  const supabase = getSupabase()
+  const [{ data: cities, error: citiesError }, { data: tours, error: toursError }] =
+    await Promise.all([
+      supabase
+        .from('cities')
+        .select('id, name, sort_order, is_active')
+        .order('sort_order')
+        .order('name'),
+      supabase.from('portfolio_items').select('city_id'),
+    ])
+
+  if (citiesError) throw new Error(citiesError.message)
+  if (toursError) throw new Error(toursError.message)
+
+  const counts: Record<string, number> = {}
+  for (const row of tours ?? []) {
+    if (row.city_id) counts[row.city_id] = (counts[row.city_id] ?? 0) + 1
+  }
+
+  return ((cities ?? []) as CityRow[]).map((city) => ({
+    ...city,
+    tour_count: counts[city.id] ?? 0,
+  }))
+}
+
+export async function setCityActive(id: string, isActive: boolean): Promise<void> {
+  const supabase = getSupabase()
+  const { error } = await supabase.from('cities').update({ is_active: isActive }).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function reorderTours(orderedIds: string[]): Promise<void> {
+  const supabase = getSupabase()
+  const updates = orderedIds.map((id, index) =>
+    supabase.from('portfolio_items').update({ sort_order: index }).eq('id', id),
+  )
+  const results = await Promise.all(updates)
+  const failed = results.find((r) => r.error)
+  if (failed?.error) throw new Error(failed.error.message)
+}
+
+async function uniqueTourId(base: string): Promise<string> {
+  let candidate = base
+  let n = 2
+  while (await fetchAdminTour(candidate)) {
+    candidate = `${base}-${n}`
+    n++
+  }
+  return candidate
+}
+
+export async function duplicateTour(id: string): Promise<string> {
+  const tour = await fetchAdminTour(id)
+  if (!tour) throw new Error('Tour not found')
+
+  const baseId = slugify(`${tour.id}-copy`)
+  const newId = await uniqueTourId(baseId)
+  const supabase = getSupabase()
+
+  let thumbnailPath: string | null = null
+  if (tour.thumbnail_path) {
+    const normalized = tour.thumbnail_path.replace(/^\/+/, '').replace(/^tour-thumbs\//, '')
+    const ext = normalized.split('.').pop() || 'jpg'
+    const newPath = `${newId}.${ext}`
+    const { data: blob, error: dlError } = await supabase.storage
+      .from('tour-thumbs')
+      .download(normalized)
+
+    if (blob && !dlError) {
+      const { error: upError } = await supabase.storage
+        .from('tour-thumbs')
+        .upload(newPath, blob, { upsert: true })
+      if (!upError) thumbnailPath = newPath
+    }
+  }
+
+  const { data: last } = await supabase
+    .from('portfolio_items')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  await createTour({
+    id: newId,
+    name: `${tour.name} (Copy)`,
+    link: tour.link,
+    thumbnail_path: thumbnailPath,
+    city_id: tour.city_id,
+    media_type: tour.media_type,
+    is_published: false,
+    sort_order: (last?.sort_order ?? 0) + 1,
+  })
+
+  return newId
 }

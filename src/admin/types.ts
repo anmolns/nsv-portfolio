@@ -35,3 +35,7 @@ export interface PortfolioStats {
   virtualTours: number
   published: number
 }
+
+export interface CityWithCount extends CityRow {
+  tour_count: number
+}

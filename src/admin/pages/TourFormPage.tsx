@@ -6,6 +6,7 @@ import { getPortfolioThumbnail } from '../../lib/portfolioMedia'
 import { slugify } from '../../lib/utils'
 import {
   createTour,
+  deleteTourThumbnail,
   fetchAdminCities,
   fetchAdminTour,
   updateTour,
@@ -197,6 +198,22 @@ export function TourFormPage() {
   }
 
   const previewSrc = thumbPreview ?? getPortfolioThumbnail(existingThumb)
+  const hasThumbnail = Boolean(thumbPreview || existingThumb)
+
+  const handleRemoveThumbnail = async () => {
+    if (isEdit && id && existingThumb) {
+      try {
+        await deleteTourThumbnail(existingThumb)
+        await updateTour(id, { thumbnail_path: null })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not remove thumbnail')
+        return
+      }
+    }
+    setExistingThumb(null)
+    setThumbFile(null)
+    setThumbPreview(null)
+  }
 
   return (
     <>
@@ -345,6 +362,15 @@ export function TourFormPage() {
                 className="block w-full text-sm text-slate file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-cyan file:text-navy file:font-bold file:text-xs hover:file:bg-cyan-bright"
               />
             </label>
+            {hasThumbnail && (
+              <button
+                type="button"
+                onClick={handleRemoveThumbnail}
+                className="mt-3 w-full rounded-full border border-red-200 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Remove thumbnail
+              </button>
+            )}
             <p className="mt-3 text-xs text-slate-light">JPG, PNG or WebP. Max 5 MB.</p>
           </AdminCard>
         </div>

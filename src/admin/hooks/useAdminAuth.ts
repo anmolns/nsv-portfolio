@@ -142,5 +142,19 @@ export function useAdminAuth() {
     })
   }, [])
 
-  return { ...state, signIn, signOut, refresh }
+  const resetPassword = useCallback(async (email: string) => {
+    const supabase = getSupabase()
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/admin/login`,
+    })
+    if (error) throw error
+  }, [])
+
+  const updatePassword = useCallback(async (password: string) => {
+    const supabase = getSupabase()
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) throw error
+  }, [])
+
+  return { ...state, signIn, signOut, refresh, resetPassword, updatePassword }
 }
