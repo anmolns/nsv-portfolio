@@ -24,53 +24,66 @@ export interface BulkImportCompleteEvent {
   total: number
 }
 
-export interface ImportHealth {
-  configured: boolean
-  runtime?: string
-}
-
 type BulkImportHandler = {
   onStart?: (total: number) => void
   onItem?: (event: BulkImportItemEvent) => void
   onComplete?: (event: BulkImportCompleteEvent) => void
+  onFatal?: (message: string) => void
 }
 
-interface ImportTourResponse {
-  status: 'done' | 'skipped' | 'error'
-  id?: string
-  name: string
-  message?: string
-}
+function parseSseChunk(chunk: string, handlers: BulkImportHandler) {
+  const blocks = chunk.split('\n\n')
+  for (const block of blocks) {
+    if (!block.trim()) continue
 
-export async function checkBulkImportServer(): Promise<ImportHealth> {
-  try {
-    const res = await fetch('/api/bulk-import/health')
-    if (!res.ok) return { configured: false }
-    const data = (await res.json()) as { configured?: boolean; runtime?: string }
-    return { configured: Boolean(data.configured), runtime: data.runtime }
-  } catch {
-    return { configured: false }
+    let eventName = 'message'
+    let dataLine = ''
+
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event: ')) eventName = line.slice(7).trim()
+      if (line.startsWith('data: ')) dataLine = line.slice(6)
+    }
+
+    if (!dataLine) continue
+
+    try {
+      const data = JSON.parse(dataLine) as Record<string, unknown>
+      if (eventName === 'start') handlers.onStart?.(data.total as number)
+      else if (eventName === 'item') handlers.onItem?.(data as unknown as BulkImportItemEvent)
+      else if (eventName === 'complete')
+        handlers.onComplete?.(data as unknown as BulkImportCompleteEvent)
+      else if (eventName === 'fatal') handlers.onFatal?.(String(data.message))
+    } catch {
+      // ignore malformed events
+    }
   }
 }
 
-async function importTourItem(
+export async function checkBulkImportServer(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/bulk-import/health')
+    if (!res.ok) return false
+    const data = (await res.json()) as { configured?: boolean }
+    return Boolean(data.configured)
+  } catch {
+    return false
+  }
+}
+
+export async function runBulkImport(
   accessToken: string,
   cityId: string,
-  row: BulkRow,
+  rows: BulkRow[],
   skipExisting: boolean,
-): Promise<ImportTourResponse> {
-  const res = await fetch('/api/import-tour', {
+  handlers: BulkImportHandler,
+): Promise<void> {
+  const res = await fetch('/api/bulk-import', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({
-      cityId,
-      name: row.name,
-      link: row.link,
-      skipExisting,
-    }),
+    body: JSON.stringify({ cityId, rows, skipExisting }),
   })
 
   if (!res.ok) {
@@ -78,74 +91,26 @@ async function importTourItem(
     throw new Error(err?.error ?? `Import failed (${res.status})`)
   }
 
-  return (await res.json()) as ImportTourResponse
-}
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('No response stream from import server')
 
-/** Import rows one-by-one — works on Vercel and local dev. */
-export async function runBulkImport(
-  accessToken: string,
-  cityId: string,
-  rows: BulkRow[],
-  skipExisting: boolean,
-  handlers: BulkImportHandler,
-): Promise<BulkImportCompleteEvent> {
-  const total = rows.length
-  handlers.onStart?.(total)
+  const decoder = new TextDecoder()
+  let buffer = ''
 
-  const result: BulkImportCompleteEvent = { success: 0, failed: 0, skipped: 0, total }
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]
-    const index = i + 1
+    buffer += decoder.decode(value, { stream: true })
+    const parts = buffer.split('\n\n')
+    buffer = parts.pop() ?? ''
 
-    handlers.onItem?.({
-      index,
-      total,
-      name: row.name,
-      status: 'checking',
-    })
-
-    handlers.onItem?.({
-      index,
-      total,
-      name: row.name,
-      status: 'screenshot',
-    })
-
-    const item = await importTourItem(accessToken, cityId, row, skipExisting)
-
-    if (item.status === 'done') {
-      result.success++
-      handlers.onItem?.({
-        index,
-        total,
-        name: item.name,
-        status: 'done',
-        id: item.id,
-      })
-    } else if (item.status === 'skipped') {
-      result.skipped++
-      handlers.onItem?.({
-        index,
-        total,
-        name: item.name,
-        status: 'skipped',
-        message: item.message,
-        id: item.id,
-      })
-    } else {
-      result.failed++
-      handlers.onItem?.({
-        index,
-        total,
-        name: item.name,
-        status: 'error',
-        message: item.message,
-        id: item.id,
-      })
+    for (const part of parts) {
+      parseSseChunk(part + '\n\n', handlers)
     }
   }
 
-  handlers.onComplete?.(result)
-  return result
+  if (buffer.trim()) {
+    parseSseChunk(buffer + '\n\n', handlers)
+  }
 }
