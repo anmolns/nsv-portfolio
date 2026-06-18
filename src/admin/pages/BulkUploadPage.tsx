@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
@@ -18,6 +18,12 @@ import {
   totalBatchRows,
   type BulkBatch,
 } from '../lib/bulkBatches'
+import {
+  clearBulkUploadDraft,
+  hasBulkUploadDraftContent,
+  readBulkUploadDraft,
+  writeBulkUploadDraft,
+} from '../lib/bulkUploadDraft'
 import { parseBulkFile } from '../lib/parseBulkSheet'
 import type { CityRow } from '../types'
 import { cn } from '../../lib/utils'
@@ -38,9 +44,17 @@ interface LogEntry extends BulkImportItemEvent {
 
 export function BulkUploadPage() {
   const { session } = useAdminAuthContext()
+  const skipNextSave = useRef(true)
+
   const [cities, setCities] = useState<CityRow[]>([])
-  const [batches, setBatches] = useState<BulkBatch[]>(() => [createEmptyBatch()])
-  const [skipExisting, setSkipExisting] = useState(true)
+  const [batches, setBatches] = useState<BulkBatch[]>(() => {
+    const draft = readBulkUploadDraft()
+    if (draft?.batches.length) return draft.batches
+    return [createEmptyBatch()]
+  })
+  const [skipExisting, setSkipExisting] = useState(
+    () => readBulkUploadDraft()?.skipExisting ?? true,
+  )
   const [serverReady, setServerReady] = useState<boolean | null>(null)
   const [loadingCities, setLoadingCities] = useState(true)
   const [parseError, setParseError] = useState<string | null>(null)
@@ -51,6 +65,39 @@ export function BulkUploadPage() {
   const [log, setLog] = useState<LogEntry[]>([])
   const [summary, setSummary] = useState<string | null>(null)
   const [fatalError, setFatalError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (skipNextSave.current) {
+      skipNextSave.current = false
+      return
+    }
+
+    const draft = { batches, skipExisting }
+    if (!hasBulkUploadDraftContent(draft)) {
+      clearBulkUploadDraft()
+      return
+    }
+    writeBulkUploadDraft(draft)
+  }, [batches, skipExisting])
+
+  useEffect(() => {
+    const persist = () => {
+      const draft = { batches, skipExisting }
+      if (!hasBulkUploadDraftContent(draft)) return
+      writeBulkUploadDraft(draft)
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') persist()
+    }
+
+    window.addEventListener('pagehide', persist)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', persist)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [batches, skipExisting])
 
   useEffect(() => {
     fetchAdminCities()
@@ -109,6 +156,7 @@ export function BulkUploadPage() {
     setSummary(null)
     setParseError(null)
     setFatalError(null)
+    clearBulkUploadDraft()
   }
 
   const handleImport = async () => {
@@ -123,7 +171,7 @@ export function BulkUploadPage() {
     setTotal(totalRows)
 
     const totals: BulkImportCompleteEvent = { success: 0, failed: 0, skipped: 0, total: totalRows }
-    let globalIndex = 0
+    let batchOffset = 0
 
     try {
       for (const batch of readyBatches) {
@@ -132,9 +180,18 @@ export function BulkUploadPage() {
 
         await runBulkImport(session.access_token, batch.cityId, batch.rows, skipExisting, {
           onItem: (event) => {
-            globalIndex++
-            setProgress(globalIndex)
-            setLog((prev) => [...prev, { ...event, batchLabel, globalIndex }])
+            const globalIndex = batchOffset + event.index
+            const isFinished = event.status === 'done' || event.status === 'skipped' || event.status === 'error'
+
+            setLog((prev) => {
+              const next = [...prev]
+              next[globalIndex - 1] = { ...event, batchLabel, globalIndex }
+              return next
+            })
+
+            if (isFinished) {
+              setProgress(globalIndex)
+            }
           },
           onComplete: (result) => {
             totals.success += result.success
@@ -143,11 +200,15 @@ export function BulkUploadPage() {
           },
           onFatal: (message) => setFatalError(message),
         })
+
+        batchOffset += batch.rows.length
       }
 
       setSummary(
         `Imported ${totals.success} tour${totals.success === 1 ? '' : 's'} · ${totals.skipped} skipped · ${totals.failed} failed across ${readyBatches.length} sheet${readyBatches.length === 1 ? '' : 's'}`,
       )
+      clearBulkUploadDraft()
+      setBatches([createEmptyBatch()])
     } catch (err) {
       setFatalError(err instanceof Error ? err.message : 'Import failed')
     } finally {
@@ -155,7 +216,7 @@ export function BulkUploadPage() {
     }
   }
 
-  const pct = total > 0 ? Math.round((progress / total) * 100) : 0
+  const pct = total > 0 ? Math.min(100, Math.round((progress / total) * 100)) : 0
   const filledSlots = batches.filter((b) => b.fileName).length
 
   return (
@@ -205,6 +266,7 @@ export function BulkUploadPage() {
         <p className="text-xs text-slate">
           For each sheet: choose a <strong>location</strong> (search existing or type a new one),
           then attach the CSV/Excel file. Add as many sheets as you need before starting import.
+          Your work is saved automatically if you switch tabs or minimize the browser.
         </p>
 
         <div className="space-y-4">
@@ -367,7 +429,7 @@ export function BulkUploadPage() {
           </div>
 
           <ul className="max-h-80 overflow-y-auto space-y-2 text-sm">
-            {log.map((item) => (
+            {log.filter(Boolean).map((item) => (
               <li
                 key={`${item.globalIndex}-${item.id ?? item.name}`}
                 className={cn(
