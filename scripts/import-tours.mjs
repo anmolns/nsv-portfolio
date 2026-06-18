@@ -13,12 +13,16 @@
  * Output:
  *   - public/tour-thumbs/*.jpg
  *   - src/data/imported-tours.json
+ *
+ * For Supabase bulk import with admin UI + progress, use /admin/bulk-upload instead.
  */
 
-import { chromium } from 'playwright'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { parseCsvLine, slugFromUrl, nameFromSlug } from './lib/tour-import-utils.mjs'
+import { launchTourBrowser, screenshotTourToFile } from './lib/tour-screenshot.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(__dirname, '..')
@@ -34,29 +38,12 @@ const NO_PAN = process.argv.includes('--no-pan')
 const THUMB_DIR = join(ROOT, 'public/tour-thumbs')
 const OUT_JSON = join(ROOT, 'src/data/imported-tours.json')
 
-function parseCsvLine(line) {
-  const cols = []
-  let cur = ''
-  let inQuotes = false
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        cur += '"'
-        i++
-      } else {
-        inQuotes = !inQuotes
-      }
-    } else if (ch === ',' && !inQuotes) {
-      cols.push(cur.trim())
-      cur = ''
-    } else {
-      cur += ch
-    }
-  }
-  cols.push(cur.trim())
-  return cols
+const screenshotOptions = {
+  waitMs: WAIT_MS,
+  panPx: PAN_PX,
+  scrollDelta: SCROLL_DELTA,
+  settleMs: SETTLE_MS,
+  noPan: NO_PAN,
 }
 
 function parseCsv(text) {
@@ -83,62 +70,6 @@ function parseCsv(text) {
       city: cityIdx >= 0 ? (cols[cityIdx] || 'Unknown').replace(/^"|"$/g, '') : 'Unknown',
       name: nameIdx >= 0 ? (cols[nameIdx] || '').replace(/^"|"$/g, '') : '',
     }
-  })
-}
-
-function slugFromUrl(url) {
-  const path = new URL(url).pathname.replace(/^\/|\/$/g, '')
-  return path
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-}
-
-function nameFromSlug(slug) {
-  return slug
-    .replace(/-nsv$/i, '')
-    .replace(/\d{1,2}(january|february|march|april|may|june|july|august|september|october|november|december)\d{0,4}$/i, '')
-    .split('-')
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-}
-
-/** Nudge the 360 viewer (drag + wheel) so the frame isn't the default loading angle */
-async function nudgeTourView(page) {
-  const { width, height } = page.viewportSize() ?? { width: 1280, height: 720 }
-  const cx = width / 2
-  const cy = height / 2
-
-  await page.mouse.move(cx, cy)
-  await page.mouse.down()
-
-  // Drag vertically — tilts/pans most WebGL tour viewers
-  await page.mouse.move(cx, cy - PAN_PX, { steps: 12 })
-  await page.mouse.up()
-
-  await page.waitForTimeout(400)
-
-  // Small scroll wheel — slight zoom on many viewers
-  await page.mouse.move(cx, cy)
-  await page.mouse.wheel(0, SCROLL_DELTA)
-
-  await page.waitForTimeout(SETTLE_MS)
-}
-
-async function screenshotTour(page, url, outPath) {
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 })
-  await page.waitForTimeout(WAIT_MS)
-
-  if (!NO_PAN) {
-    await nudgeTourView(page)
-  }
-
-  await page.screenshot({
-    path: outPath,
-    type: 'jpeg',
-    quality: 82,
-    fullPage: false,
   })
 }
 
@@ -173,14 +104,13 @@ async function main() {
     console.log(
       `\nLaunching browser (wait ${WAIT_MS / 1000}s, then pan down ${PAN_PX}px + scroll before capture)…\n`,
     )
-    const browser = await chromium.launch({ headless: true })
-    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } })
+    const { browser, page } = await launchTourBrowser()
 
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i]
       process.stdout.write(`[${i + 1}/${entries.length}] ${entry.name} … `)
       try {
-        await screenshotTour(page, entry.link, entry._thumbPath)
+        await screenshotTourToFile(page, entry.link, entry._thumbPath, screenshotOptions)
         console.log('ok')
       } catch (err) {
         console.log('failed —', err.message)

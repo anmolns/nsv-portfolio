@@ -9,9 +9,18 @@ interface CityPickerProps {
   value: string
   onChange: (cityId: string) => void
   onCitiesChange: (cities: CityRow[]) => void
+  disabled?: boolean
+  label?: string
 }
 
-export function CityPicker({ cities, value, onChange, onCitiesChange }: CityPickerProps) {
+export function CityPicker({
+  cities,
+  value,
+  onChange,
+  onCitiesChange,
+  disabled,
+  label = 'City',
+}: CityPickerProps) {
   const listId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
@@ -24,8 +33,10 @@ export function CityPicker({ cities, value, onChange, onCitiesChange }: CityPick
   useEffect(() => {
     if (selectedCity) {
       setQuery(selectedCity.name)
+    } else if (!value) {
+      setQuery('')
     }
-  }, [selectedCity?.id, selectedCity?.name])
+  }, [selectedCity?.id, selectedCity?.name, value])
 
   useEffect(() => {
     const onPointerDown = (e: MouseEvent) => {
@@ -81,7 +92,7 @@ export function CityPicker({ cities, value, onChange, onCitiesChange }: CityPick
         htmlFor={`${listId}-input`}
         className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2"
       >
-        City
+        {label}
       </label>
 
       <div className="relative">
@@ -92,17 +103,21 @@ export function CityPicker({ cities, value, onChange, onCitiesChange }: CityPick
           aria-controls={`${listId}-listbox`}
           autoComplete="off"
           value={query}
+          disabled={disabled}
           onChange={(e) => {
+            if (disabled) return
             setQuery(e.target.value)
             setOpen(true)
             if (!e.target.value.trim()) onChange('')
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            if (!disabled) setOpen(true)
+          }}
           placeholder="Search or add city…"
           className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy placeholder:text-slate-light focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
         />
 
-        {open && (
+        {open && !disabled && (
           <div
             id={`${listId}-listbox`}
             role="listbox"

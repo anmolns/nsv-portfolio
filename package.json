@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "import:tours": "node scripts/import-tours.mjs",
-    "parse:tours": "node scripts/parse-vr-csv.mjs"
+    "parse:tours": "node scripts/parse-vr-csv.mjs",
+    "dev:import": "node --env-file=.env.local server/bulk-import.mjs",
+    "dev:all": "concurrently -n vite,import -c cyan,magenta \"npm run dev\" \"npm run dev:import\""
   },
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
@@ -23,7 +25,8 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0",
-    "tailwindcss": "^4.3.0"
+    "tailwindcss": "^4.3.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -36,6 +39,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "concurrently": "^9.2.1",
     "playwright": "^1.52.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",

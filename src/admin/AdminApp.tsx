@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from '../lib/supabase'
 import { AdminGuard } from './components/AdminGuard'
 import { AdminLayout } from './components/AdminLayout'
 import { AdminAuthProvider } from './context/AdminAuthContext'
+import { BulkUploadPage } from './pages/BulkUploadPage'
 import { CitiesPage } from './pages/CitiesPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
@@ -44,6 +45,7 @@ export default function AdminApp() {
           <Route path="tours/new" element={<TourFormPage />} />
           <Route path="tours/:id/edit" element={<TourFormPage />} />
           <Route path="cities" element={<CitiesPage />} />
+          <Route path="bulk-upload" element={<BulkUploadPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/admin" replace />} />
