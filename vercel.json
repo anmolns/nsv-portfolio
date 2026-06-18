@@ -1,7 +1,13 @@
 {
+  "functions": {
+    "api/import-tour.mjs": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

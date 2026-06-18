@@ -41,7 +41,9 @@ export function BulkUploadPage() {
   const [cities, setCities] = useState<CityRow[]>([])
   const [batches, setBatches] = useState<BulkBatch[]>(() => [createEmptyBatch()])
   const [skipExisting, setSkipExisting] = useState(true)
-  const [serverReady, setServerReady] = useState<boolean | null>(null)
+  const [serverHealth, setServerHealth] = useState<{ configured: boolean; runtime?: string } | null>(
+    null,
+  )
   const [loadingCities, setLoadingCities] = useState(true)
   const [parseError, setParseError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
@@ -58,7 +60,7 @@ export function BulkUploadPage() {
       .catch(() => setParseError('Could not load cities'))
       .finally(() => setLoadingCities(false))
 
-    checkBulkImportServer().then(setServerReady)
+    checkBulkImportServer().then(setServerHealth)
   }, [])
 
   const readyBatches = batches.filter(batchIsReady)
@@ -141,7 +143,6 @@ export function BulkUploadPage() {
             totals.failed += result.failed
             totals.skipped += result.skipped
           },
-          onFatal: (message) => setFatalError(message),
         })
       }
 
@@ -155,6 +156,8 @@ export function BulkUploadPage() {
     }
   }
 
+  const serverReady = serverHealth?.configured ?? false
+  const isVercelRuntime = serverHealth?.runtime === 'vercel'
   const pct = total > 0 ? Math.round((progress / total) * 100) : 0
   const filledSlots = batches.filter((b) => b.fileName).length
 
@@ -173,12 +176,36 @@ export function BulkUploadPage() {
         }
       />
 
-      {serverReady === false && (
+      {serverHealth && !serverReady && (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="font-semibold">Import server not running</p>
+          <p className="font-semibold">
+            {!serverHealth.runtime
+              ? 'Import API not reachable'
+              : 'Import API not configured'}
+          </p>
           <p className="mt-1 text-amber-800/90">
-            Run <code className="rounded bg-amber-100 px-1.5 py-0.5">npm run dev:all</code> so
-            Playwright can capture thumbnails locally.
+            {!serverHealth.runtime ? (
+              <>
+                On localhost, run{' '}
+                <code className="rounded bg-amber-100 px-1.5 py-0.5">npm run dev:all</code>. On
+                Vercel, add{' '}
+                <code className="rounded bg-amber-100 px-1.5 py-0.5">SUPABASE_SERVICE_ROLE_KEY</code>{' '}
+                in project env vars and redeploy.
+              </>
+            ) : isVercelRuntime ? (
+              <>
+                Vercel → Settings → Environment Variables → add{' '}
+                <code className="rounded bg-amber-100 px-1.5 py-0.5">SUPABASE_SERVICE_ROLE_KEY</code>{' '}
+                (no VITE_ prefix), then redeploy.
+              </>
+            ) : (
+              <>
+                Add{' '}
+                <code className="rounded bg-amber-100 px-1.5 py-0.5">SUPABASE_SERVICE_ROLE_KEY</code>{' '}
+                to <code className="rounded bg-amber-100 px-1.5 py-0.5">.env.local</code> and run{' '}
+                <code className="rounded bg-amber-100 px-1.5 py-0.5">npm run dev:all</code>.
+              </>
+            )}
           </p>
         </div>
       )}
@@ -322,8 +349,8 @@ export function BulkUploadPage() {
             disabled={
               importing ||
               readyBatches.length === 0 ||
-              !session?.access_token ||
-              serverReady === false
+            !session?.access_token ||
+            (serverHealth !== null && !serverReady)
             }
             onClick={() => void handleImport()}
             className={cn(

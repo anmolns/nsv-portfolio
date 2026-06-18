@@ -6,6 +6,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
+      '/api/import-tour': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
       '/api/bulk-import': {
         target: 'http://localhost:3001',
         changeOrigin: true,
