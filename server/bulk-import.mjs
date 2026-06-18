@@ -1,22 +1,8 @@
-/**
- * Local bulk-import API — Playwright screenshots + Supabase writes.
- *
- * Requires in .env.local:
- *   VITE_SUPABASE_URL (or SUPABASE_URL)
- *   VITE_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY)
- *   SUPABASE_SERVICE_ROLE_KEY
- *
- * Usage:
- *   npm run dev:import        # this server only
- *   npm run dev:all           # Vite + import server
- *
- * Admin UI: /admin/bulk-upload (proxied via Vite in dev)
- */
-
 import http from 'node:http'
 import { createClient } from '@supabase/supabase-js'
-import { slugFromUrl } from '../scripts/lib/tour-import-utils.mjs'
+import { portfolioIdFromUrl, slugFromUrl } from '../scripts/lib/tour-import-utils.mjs'
 import { launchTourBrowser, screenshotTourToBuffer } from '../scripts/lib/tour-screenshot.mjs'
+import { screenshotYoutubeToBuffer } from '../scripts/lib/youtube-screenshot.mjs'
 
 const PORT = Number(process.env.IMPORT_PORT ?? 3001)
 
@@ -86,6 +72,17 @@ async function getNextSortOrder(adminClient) {
   return (data?.sort_order ?? 0) + 1
 }
 
+function idFromLink(link, mediaType) {
+  return mediaType === 'video' ? portfolioIdFromUrl(link) : slugFromUrl(link)
+}
+
+async function captureThumbnail(page, link, mediaType) {
+  if (mediaType === 'video') {
+    return screenshotYoutubeToBuffer(page, link)
+  }
+  return screenshotTourToBuffer(page, link)
+}
+
 async function processBulkImport(req, res) {
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     sendJson(res, 503, {
@@ -110,9 +107,14 @@ async function processBulkImport(req, res) {
     return
   }
 
-  const { cityId, rows, skipExisting = true } = body ?? {}
+  const { cityId, rows, skipExisting = true, mediaType = 'virtual-tour' } = body ?? {}
   if (!cityId || !Array.isArray(rows) || rows.length === 0) {
     sendJson(res, 400, { error: 'cityId and rows[] are required' })
+    return
+  }
+
+  if (mediaType !== 'virtual-tour' && mediaType !== 'video') {
+    sendJson(res, 400, { error: 'mediaType must be virtual-tour or video' })
     return
   }
 
@@ -166,7 +168,7 @@ async function processBulkImport(req, res) {
         continue
       }
 
-      const baseId = slugFromUrl(link)
+      const baseId = idFromLink(link, mediaType)
       const displayName = name || baseId
 
       sendSse(res, 'item', {
@@ -207,7 +209,7 @@ async function processBulkImport(req, res) {
 
       let thumbnailPath = null
       try {
-        const buffer = await screenshotTourToBuffer(page, link)
+        const buffer = await captureThumbnail(page, link, mediaType)
         thumbnailPath = `${tourId}.jpg`
         const { error: uploadError } = await adminClient.storage
           .from('tour-thumbs')
@@ -245,6 +247,7 @@ async function processBulkImport(req, res) {
               name: displayName,
               thumbnail_path: thumbnailPath,
               city_id: cityId,
+              media_type: mediaType,
             })
             .eq('id', tourId)
           if (error) throw new Error(error.message)
@@ -255,7 +258,7 @@ async function processBulkImport(req, res) {
             link,
             thumbnail_path: thumbnailPath,
             city_id: cityId,
-            media_type: 'virtual-tour',
+            media_type: mediaType,
             is_published: true,
             sort_order: sortOrder++,
           })

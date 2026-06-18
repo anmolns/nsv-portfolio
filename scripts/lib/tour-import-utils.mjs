@@ -31,6 +31,30 @@ export function slugFromUrl(url) {
     .replace(/^-|-$/g, '')
 }
 
+/** Stable portfolio id — uses YouTube video id when available. */
+export function portfolioIdFromUrl(url) {
+  try {
+    const u = new URL(url)
+    const host = u.hostname.toLowerCase()
+
+    if (host.includes('youtu.be')) {
+      const id = u.pathname.replace(/^\//, '').split('/')[0]
+      if (id) return `yt-${id.toLowerCase()}`
+    }
+
+    if (host.includes('youtube.com')) {
+      const v = u.searchParams.get('v')
+      if (v) return `yt-${v.toLowerCase()}`
+      const shorts = u.pathname.match(/\/shorts\/([^/]+)/)
+      if (shorts?.[1]) return `yt-${shorts[1].toLowerCase()}`
+    }
+  } catch {
+    // fall through
+  }
+
+  return slugFromUrl(url)
+}
+
 export function nameFromSlug(slug) {
   return slug
     .replace(/-nsv$/i, '')

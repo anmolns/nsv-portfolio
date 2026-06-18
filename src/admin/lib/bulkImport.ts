@@ -1,5 +1,7 @@
 import type { BulkRow } from './parseBulkSheet'
 
+export type BulkMediaType = 'virtual-tour' | 'video'
+
 export type BulkItemStatus =
   | 'checking'
   | 'screenshot'
@@ -75,6 +77,7 @@ export async function runBulkImport(
   cityId: string,
   rows: BulkRow[],
   skipExisting: boolean,
+  mediaType: BulkMediaType,
   handlers: BulkImportHandler,
 ): Promise<void> {
   const res = await fetch('/api/bulk-import', {
@@ -83,7 +86,7 @@ export async function runBulkImport(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ cityId, rows, skipExisting }),
+    body: JSON.stringify({ cityId, rows, skipExisting, mediaType }),
   })
 
   if (!res.ok) {

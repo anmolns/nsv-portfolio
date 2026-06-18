@@ -1,11 +1,16 @@
 import type { BulkBatch } from './bulkBatches'
 import type { BulkRow } from './parseBulkSheet'
 
-const DRAFT_KEY = 'admin-bulk-upload:draft'
+export type BulkUploadKind = 'tour' | 'video'
 
 export interface BulkUploadDraft {
   batches: BulkBatch[]
   skipExisting: boolean
+}
+
+const DRAFT_KEYS: Record<BulkUploadKind, string> = {
+  tour: 'admin-bulk-upload:tour',
+  video: 'admin-bulk-upload:video',
 }
 
 function isBulkRow(value: unknown): value is BulkRow {
@@ -26,9 +31,9 @@ function isBulkBatch(value: unknown): value is BulkBatch {
   )
 }
 
-export function readBulkUploadDraft(): BulkUploadDraft | null {
+export function readBulkUploadDraft(kind: BulkUploadKind): BulkUploadDraft | null {
   try {
-    const raw = localStorage.getItem(DRAFT_KEY)
+    const raw = localStorage.getItem(DRAFT_KEYS[kind])
     if (!raw) return null
 
     const parsed = JSON.parse(raw) as Partial<BulkUploadDraft>
@@ -45,17 +50,17 @@ export function readBulkUploadDraft(): BulkUploadDraft | null {
   }
 }
 
-export function writeBulkUploadDraft(draft: BulkUploadDraft) {
+export function writeBulkUploadDraft(kind: BulkUploadKind, draft: BulkUploadDraft) {
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    localStorage.setItem(DRAFT_KEYS[kind], JSON.stringify(draft))
   } catch {
     // ignore quota / private mode
   }
 }
 
-export function clearBulkUploadDraft() {
+export function clearBulkUploadDraft(kind: BulkUploadKind) {
   try {
-    localStorage.removeItem(DRAFT_KEY)
+    localStorage.removeItem(DRAFT_KEYS[kind])
   } catch {
     // ignore
   }
@@ -65,4 +70,16 @@ export function hasBulkUploadDraftContent(draft: BulkUploadDraft): boolean {
   return draft.batches.some(
     (b) => Boolean(b.cityId || b.fileName || b.rows.length > 0),
   )
+}
+
+/** Migrate legacy single-key draft into tour tab. */
+export function migrateLegacyBulkDraft(): void {
+  try {
+    const legacy = localStorage.getItem('admin-bulk-upload:draft')
+    if (!legacy || localStorage.getItem(DRAFT_KEYS.tour)) return
+    localStorage.setItem(DRAFT_KEYS.tour, legacy)
+    localStorage.removeItem('admin-bulk-upload:draft')
+  } catch {
+    // ignore
+  }
 }
