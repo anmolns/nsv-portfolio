@@ -1,3 +1,5 @@
+import { isYoutubeLink } from '../../lib/portfolioLink'
+
 export interface BulkRow {
   name: string
   link: string
@@ -38,15 +40,6 @@ function normalizeLink(raw: string): string | null {
     return u.toString().replace(/\/$/, '') + '/'
   } catch {
     return null
-  }
-}
-
-function isYoutubeLink(link: string): boolean {
-  try {
-    const host = new URL(link).hostname.toLowerCase()
-    return host.includes('youtube.com') || host.includes('youtu.be')
-  } catch {
-    return false
   }
 }
 

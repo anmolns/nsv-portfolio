@@ -3,7 +3,9 @@ import { motion } from 'framer-motion'
 
 import {
   createCity,
+  deleteCity,
   fetchAllAdminCities,
+  mergeCities,
   setCityActive,
 } from '../api/adminPortfolio'
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
@@ -16,6 +18,8 @@ export function CitiesPage() {
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [mergeSourceId, setMergeSourceId] = useState<string | null>(null)
+  const [mergeTargetId, setMergeTargetId] = useState('')
 
   const load = () => {
     setLoading(true)
@@ -61,13 +65,65 @@ export function CitiesPage() {
     }
   }
 
+  const handleDelete = async (city: CityWithCount) => {
+    const tourNote =
+      city.tour_count > 0
+        ? `\n\n${city.tour_count} tour(s) will be unassigned (not deleted).`
+        : ''
+    if (!confirm(`Delete "${city.name}"?${tourNote}\n\nThis cannot be undone.`)) return
+
+    setBusyId(city.id)
+    try {
+      await deleteCity(city.id)
+      setCities((prev) => prev.filter((c) => c.id !== city.id))
+      if (mergeSourceId === city.id) {
+        setMergeSourceId(null)
+        setMergeTargetId('')
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleMerge = async (source: CityWithCount) => {
+    if (!mergeTargetId) {
+      alert('Choose a city to merge into')
+      return
+    }
+
+    const target = cities.find((c) => c.id === mergeTargetId)
+    if (
+      !confirm(
+        `Merge "${source.name}" into "${target?.name}"?\n\n${source.tour_count} tour(s) will move to ${target?.name}, then "${source.name}" will be deleted.`,
+      )
+    ) {
+      return
+    }
+
+    setBusyId(source.id)
+    try {
+      await mergeCities(source.id, mergeTargetId)
+      setMergeSourceId(null)
+      setMergeTargetId('')
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Merge failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const activeCount = cities.filter((c) => c.is_active).length
+  const mergeTargets = (sourceId: string) =>
+    cities.filter((c) => c.id !== sourceId).sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <>
       <AdminPageHeader
         title="Cities"
-        subtitle={`${activeCount} active · Cities stay saved even when tours are deleted`}
+        subtitle={`${activeCount} active · Merge duplicates (e.g. Gurugram → Gurgaon) or delete unused cities`}
       />
 
       {error && (
@@ -112,7 +168,7 @@ export function CitiesPage() {
                     Status
                   </th>
                   <th className="px-5 py-4 text-[10px] uppercase tracking-wider font-semibold text-slate text-right">
-                    Action
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -139,14 +195,72 @@ export function CitiesPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button
-                        type="button"
-                        disabled={busyId === city.id}
-                        onClick={() => toggleActive(city)}
-                        className="text-cyan font-semibold hover:text-cyan-bright disabled:opacity-50"
-                      >
-                        {city.is_active ? 'Hide' : 'Activate'}
-                      </button>
+                      {mergeSourceId === city.id ? (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <select
+                            value={mergeTargetId}
+                            onChange={(e) => setMergeTargetId(e.target.value)}
+                            className="rounded-lg border border-border bg-off-white px-2 py-1.5 text-xs text-navy"
+                          >
+                            <option value="">Merge into…</option>
+                            {mergeTargets(city.id).map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            disabled={busyId === city.id || !mergeTargetId}
+                            onClick={() => handleMerge(city)}
+                            className="text-cyan font-semibold hover:text-cyan-bright disabled:opacity-50 text-xs"
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMergeSourceId(null)
+                              setMergeTargetId('')
+                            }}
+                            className="text-slate font-semibold hover:text-navy text-xs"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            disabled={busyId === city.id}
+                            onClick={() => toggleActive(city)}
+                            className="text-cyan font-semibold hover:text-cyan-bright disabled:opacity-50"
+                          >
+                            {city.is_active ? 'Hide' : 'Activate'}
+                          </button>
+                          {city.tour_count > 0 && cities.length > 1 && (
+                            <button
+                              type="button"
+                              disabled={busyId === city.id}
+                              onClick={() => {
+                                setMergeSourceId(city.id)
+                                setMergeTargetId('')
+                              }}
+                              className="text-navy font-semibold hover:text-cyan disabled:opacity-50"
+                            >
+                              Merge
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            disabled={busyId === city.id}
+                            onClick={() => handleDelete(city)}
+                            className="text-red-500 font-semibold hover:text-red-600 disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </motion.tr>
                 ))}

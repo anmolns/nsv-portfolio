@@ -57,11 +57,12 @@ export function BulkUploadPage() {
         </button>
       </div>
 
-      {tab === 'tour' ? (
+      <div className={tab === 'tour' ? '' : 'hidden'}>
         <BulkUploadPanel kind="tour" mediaType="virtual-tour" />
-      ) : (
+      </div>
+      <div className={tab === 'video' ? '' : 'hidden'}>
         <BulkUploadPanel kind="video" mediaType="video" />
-      )}
+      </div>
     </>
   )
 }

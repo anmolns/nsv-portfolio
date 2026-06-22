@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 
 import { getSupabase, isSupabaseConfigured } from '../../lib/supabase'
@@ -12,6 +12,8 @@ interface AdminAuthState {
 }
 
 export function useAdminAuth() {
+  const initialLoadDone = useRef(false)
+
   const [state, setState] = useState<AdminAuthState>({
     session: null,
     user: null,
@@ -32,7 +34,9 @@ export function useAdminAuth() {
     return Boolean(data)
   }, [])
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? initialLoadDone.current
+
     if (!isSupabaseConfigured()) {
       setState({
         session: null,
@@ -41,10 +45,13 @@ export function useAdminAuth() {
         loading: false,
         error: 'Supabase is not configured.',
       })
+      initialLoadDone.current = true
       return
     }
 
-    setState((s) => ({ ...s, loading: true, error: null }))
+    if (!silent) {
+      setState((s) => ({ ...s, loading: true, error: null }))
+    }
 
     try {
       const supabase = getSupabase()
@@ -60,6 +67,7 @@ export function useAdminAuth() {
           loading: false,
           error: null,
         })
+        initialLoadDone.current = true
         return
       }
 
@@ -71,6 +79,7 @@ export function useAdminAuth() {
         loading: false,
         error: null,
       })
+      initialLoadDone.current = true
     } catch (err) {
       setState({
         session: null,
@@ -79,6 +88,7 @@ export function useAdminAuth() {
         loading: false,
         error: err instanceof Error ? err.message : 'Auth check failed',
       })
+      initialLoadDone.current = true
     }
   }, [checkAdmin])
 
@@ -90,8 +100,9 @@ export function useAdminAuth() {
     const supabase = getSupabase()
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      refresh()
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'INITIAL_SESSION') return
+      void refresh({ silent: true })
     })
 
     return () => subscription.unsubscribe()

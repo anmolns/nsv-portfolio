@@ -1,5 +1,6 @@
 import { slugify } from '../../lib/utils'
 import { getSupabase } from '../../lib/supabase'
+import { canonicalCityName } from '../lib/cityNames'
 import type {
   CityRow,
   CityWithCount,
@@ -19,19 +20,38 @@ export async function fetchAdminCities(): Promise<CityRow[]> {
   return (data ?? []) as CityRow[]
 }
 
+/** All cities for admin filters (includes hidden cities assigned to tours). */
+export async function fetchAdminFilterCities(): Promise<CityWithCount[]> {
+  return fetchAllAdminCities()
+}
+
+async function findCityByName(name: string): Promise<CityRow | null> {
+  const supabase = getSupabase()
+  const canonical = canonicalCityName(name)
+
+  for (const candidate of [canonical, name.trim()]) {
+    if (!candidate) continue
+    const { data, error } = await supabase
+      .from('cities')
+      .select('id, name, sort_order, is_active')
+      .ilike('name', candidate)
+      .maybeSingle()
+
+    if (error) throw new Error(error.message)
+    if (data) return data as CityRow
+  }
+
+  return null
+}
+
 export async function createCity(name: string): Promise<CityRow> {
   const supabase = getSupabase()
   const trimmed = name.trim()
   if (!trimmed) throw new Error('City name is required')
 
-  const { data: existing, error: findError } = await supabase
-    .from('cities')
-    .select('id, name, sort_order, is_active')
-    .ilike('name', trimmed)
-    .maybeSingle()
-
-  if (findError) throw new Error(findError.message)
-  if (existing) return existing as CityRow
+  const displayName = canonicalCityName(trimmed)
+  const existing = await findCityByName(displayName)
+  if (existing) return existing
 
   const { data: lastCity, error: sortError } = await supabase
     .from('cities')
@@ -45,7 +65,7 @@ export async function createCity(name: string): Promise<CityRow> {
   const { data, error } = await supabase
     .from('cities')
     .insert({
-      name: trimmed,
+      name: displayName,
       sort_order: (lastCity?.sort_order ?? 0) + 1,
       is_active: true,
     })
@@ -120,17 +140,30 @@ export async function deleteTour(id: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
-export async function uploadTourThumbnail(id: string, file: File): Promise<string> {
+export async function uploadTourThumbnail(
+  id: string,
+  file: File,
+  previousPath?: string | null,
+): Promise<string> {
   const supabase = getSupabase()
   const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
   const path = `${id}.${ext}`
 
   const { error } = await supabase.storage.from('tour-thumbs').upload(path, file, {
     upsert: true,
-    contentType: file.type,
+    contentType: file.type || 'image/jpeg',
   })
 
   if (error) throw new Error(error.message)
+
+  if (previousPath && previousPath !== path) {
+    try {
+      await deleteTourThumbnail(previousPath)
+    } catch {
+      // ignore cleanup errors
+    }
+  }
+
   return path
 }
 
@@ -171,6 +204,38 @@ export async function setCityActive(id: string, isActive: boolean): Promise<void
   const supabase = getSupabase()
   const { error } = await supabase.from('cities').update({ is_active: isActive }).eq('id', id)
   if (error) throw new Error(error.message)
+}
+
+export async function deleteCity(id: string): Promise<void> {
+  const supabase = getSupabase()
+  const { error } = await supabase.from('cities').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+/** Move all tours from one city to another, then delete the source city. */
+export async function mergeCities(sourceId: string, targetId: string): Promise<number> {
+  if (sourceId === targetId) throw new Error('Choose a different city to merge into')
+
+  const supabase = getSupabase()
+
+  const { data: tours, error: fetchError } = await supabase
+    .from('portfolio_items')
+    .select('id')
+    .eq('city_id', sourceId)
+
+  if (fetchError) throw new Error(fetchError.message)
+
+  if (tours?.length) {
+    const { error: updateError } = await supabase
+      .from('portfolio_items')
+      .update({ city_id: targetId })
+      .eq('city_id', sourceId)
+
+    if (updateError) throw new Error(updateError.message)
+  }
+
+  await deleteCity(sourceId)
+  return tours?.length ?? 0
 }
 
 export async function reorderTours(orderedIds: string[]): Promise<void> {

@@ -31,7 +31,6 @@ export function slugFromUrl(url) {
     .replace(/^-|-$/g, '')
 }
 
-/** Stable portfolio id — uses YouTube video id when available. */
 export function portfolioIdFromUrl(url) {
   try {
     const u = new URL(url)
@@ -53,6 +52,21 @@ export function portfolioIdFromUrl(url) {
   }
 
   return slugFromUrl(url)
+}
+
+export function isYoutubeLink(url) {
+  try {
+    const host = new URL(url.trim()).hostname.toLowerCase()
+    return host.includes('youtube.com') || host.includes('youtu.be')
+  } catch {
+    return false
+  }
+}
+
+/** YouTube URLs are always videos, regardless of which bulk tab was used. */
+export function resolveMediaTypeFromLink(link, requestedMediaType) {
+  if (isYoutubeLink(link)) return 'video'
+  return requestedMediaType
 }
 
 export function nameFromSlug(slug) {

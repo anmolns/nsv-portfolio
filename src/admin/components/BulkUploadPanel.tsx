@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 
 import { fetchAdminCities } from '../api/adminPortfolio'
 import { CityPicker } from '../components/CityPicker'
 import { AdminCard } from '../components/AdminLayout'
 import { useAdminAuthContext } from '../context/AdminAuthContext'
+import { useBulkImportContext } from '../context/BulkImportContext'
 import {
   batchIsReady,
   createEmptyBatch,
@@ -13,9 +14,6 @@ import {
 } from '../lib/bulkBatches'
 import {
   checkBulkImportServer,
-  runBulkImport,
-  type BulkImportCompleteEvent,
-  type BulkImportItemEvent,
   type BulkMediaType,
 } from '../lib/bulkImport'
 import {
@@ -26,6 +24,7 @@ import {
   type BulkUploadKind,
 } from '../lib/bulkUploadDraft'
 import { parseBulkFile } from '../lib/parseBulkSheet'
+import { isYoutubeLink } from '../../lib/portfolioLink'
 import type { CityRow } from '../types'
 import { cn } from '../../lib/utils'
 
@@ -36,11 +35,6 @@ const STATUS_LABEL: Record<string, string> = {
   done: 'Done',
   skipped: 'Skipped',
   error: 'Failed',
-}
-
-interface LogEntry extends BulkImportItemEvent {
-  batchLabel: string
-  globalIndex: number
 }
 
 interface BulkUploadPanelProps {
@@ -69,7 +63,10 @@ const PANEL_COPY: Record<
 export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
   const copy = PANEL_COPY[kind]
   const { session } = useAdminAuthContext()
+  const { job, isImporting, runBulkImportJob } = useBulkImportContext()
   const skipNextSave = useRef(true)
+  const batchesRef = useRef<BulkBatch[]>([])
+  const skipExistingRef = useRef(true)
 
   const [cities, setCities] = useState<CityRow[]>([])
   const [batches, setBatches] = useState<BulkBatch[]>(() => {
@@ -83,13 +80,10 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
   const [serverReady, setServerReady] = useState<boolean | null>(null)
   const [loadingCities, setLoadingCities] = useState(true)
   const [parseError, setParseError] = useState<string | null>(null)
-  const [importing, setImporting] = useState(false)
   const [parsingBatchId, setParsingBatchId] = useState<string | null>(null)
-  const [progress, setProgress] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [log, setLog] = useState<LogEntry[]>([])
-  const [summary, setSummary] = useState<string | null>(null)
-  const [fatalError, setFatalError] = useState<string | null>(null)
+
+  batchesRef.current = batches
+  skipExistingRef.current = skipExisting
 
   useEffect(() => {
     fetchAdminCities()
@@ -116,7 +110,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
 
   useEffect(() => {
     const persist = () => {
-      const draft = { batches, skipExisting }
+      const draft = { batches: batchesRef.current, skipExisting: skipExistingRef.current }
       if (!hasBulkUploadDraftContent(draft)) return
       writeBulkUploadDraft(kind, draft)
     }
@@ -128,24 +122,30 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
     window.addEventListener('pagehide', persist)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
+      persist()
       window.removeEventListener('pagehide', persist)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [batches, skipExisting, kind])
+  }, [kind])
 
   const readyBatches = batches.filter(batchIsReady)
   const totalRows = totalBatchRows(readyBatches)
+  const youtubeOnTourTab = useMemo(() => {
+    if (kind !== 'tour') return 0
+    return batches.reduce(
+      (n, b) => n + b.rows.filter((r) => isYoutubeLink(r.link)).length,
+      0,
+    )
+  }, [batches, kind])
 
   const updateBatch = (batchId: string, patch: Partial<BulkBatch>) => {
     setBatches((prev) => prev.map((b) => (b.id === batchId ? { ...b, ...patch } : b)))
   }
 
   const handleSlotFile = async (batchId: string, file: File | null) => {
-    if (!file || importing) return
+    if (!file || isImporting) return
 
     setParseError(null)
-    setSummary(null)
-    setFatalError(null)
     setParsingBatchId(batchId)
 
     try {
@@ -160,12 +160,12 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
   }
 
   const addSheet = () => {
-    if (importing) return
+    if (isImporting) return
     setBatches((prev) => [...prev, createEmptyBatch()])
   }
 
   const removeBatch = (batchId: string) => {
-    if (importing) return
+    if (isImporting) return
     setBatches((prev) => {
       const next = prev.filter((b) => b.id !== batchId)
       return next.length > 0 ? next : [createEmptyBatch()]
@@ -173,82 +173,35 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
   }
 
   const clearBatches = () => {
-    if (importing) return
+    if (isImporting) return
     setBatches([createEmptyBatch()])
-    setLog([])
-    setProgress(0)
-    setTotal(0)
-    setSummary(null)
-    setParseError(null)
-    setFatalError(null)
     clearBulkUploadDraft(kind)
   }
 
   const handleImport = async () => {
-    if (!session?.access_token || readyBatches.length === 0 || importing) return
+    if (!session?.access_token || readyBatches.length === 0 || isImporting) return
 
-    setImporting(true)
     setParseError(null)
-    setSummary(null)
-    setFatalError(null)
-    setLog([])
-    setProgress(0)
-    setTotal(totalRows)
 
-    const totals: BulkImportCompleteEvent = { success: 0, failed: 0, skipped: 0, total: totalRows }
-    let batchOffset = 0
-
-    try {
-      for (const batch of readyBatches) {
-        const cityName = cities.find((c) => c.id === batch.cityId)?.name ?? 'Unknown'
-        const batchLabel = `${batch.fileName} · ${cityName}`
-
-        await runBulkImport(
-          session.access_token,
-          batch.cityId,
-          batch.rows,
-          skipExisting,
-          mediaType,
-          {
-            onItem: (event) => {
-              const globalIndex = batchOffset + event.index
-              const isFinished =
-                event.status === 'done' || event.status === 'skipped' || event.status === 'error'
-
-              setLog((prev) => {
-                const next = [...prev]
-                next[globalIndex - 1] = { ...event, batchLabel, globalIndex }
-                return next
-              })
-
-              if (isFinished) {
-                setProgress(globalIndex)
-              }
-            },
-            onComplete: (result) => {
-              totals.success += result.success
-              totals.failed += result.failed
-              totals.skipped += result.skipped
-            },
-            onFatal: (message) => setFatalError(message),
-          },
-        )
-
-        batchOffset += batch.rows.length
-      }
-
-      setSummary(
-        `Imported ${totals.success} item${totals.success === 1 ? '' : 's'} · ${totals.skipped} skipped · ${totals.failed} failed across ${readyBatches.length} sheet${readyBatches.length === 1 ? '' : 's'}`,
-      )
-      clearBulkUploadDraft(kind)
-      setBatches([createEmptyBatch()])
-    } catch (err) {
-      setFatalError(err instanceof Error ? err.message : 'Import failed')
-    } finally {
-      setImporting(false)
-    }
+    await runBulkImportJob({
+      accessToken: session.access_token,
+      mediaType,
+      skipExisting,
+      batches: readyBatches.map((batch) => ({
+        cityId: batch.cityId,
+        cityName: cities.find((c) => c.id === batch.cityId)?.name ?? 'Unknown',
+        fileName: batch.fileName ?? 'sheet',
+        rows: batch.rows,
+      })),
+    })
   }
 
+  const showJob = job && job.mediaType === mediaType
+  const progress = showJob ? job.progress : 0
+  const total = showJob ? job.total : totalRows
+  const log = showJob ? job.log : []
+  const summary = showJob ? job.summary : null
+  const fatalError = showJob ? job.fatalError : null
   const pct = total > 0 ? Math.min(100, Math.round((progress / total) * 100)) : 0
   const filledSlots = batches.filter((b) => b.fileName).length
 
@@ -273,6 +226,14 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
       {parseError && (
         <p className="mb-6 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
           {parseError}
+        </p>
+      )}
+
+      {youtubeOnTourTab > 0 && (
+        <p className="mb-6 text-sm text-cyan-900 bg-cyan/5 border border-cyan/20 rounded-xl px-4 py-3">
+          {youtubeOnTourTab} YouTube link{youtubeOnTourTab === 1 ? '' : 's'} detected — they will
+          import as <strong>Video</strong>. For a dedicated YouTube workflow, use the{' '}
+          <strong>YouTube videos</strong> tab.
         </p>
       )}
 
@@ -310,7 +271,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                   {batches.length > 1 && (
                     <button
                       type="button"
-                      disabled={importing}
+                      disabled={isImporting}
                       onClick={() => removeBatch(batch.id)}
                       className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50"
                     >
@@ -324,7 +285,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                     label="Location"
                     cities={cities}
                     value={batch.cityId}
-                    disabled={importing || loadingCities}
+                    disabled={isImporting || loadingCities}
                     onChange={(cityId) => updateBatch(batch.id, { cityId })}
                     onCitiesChange={setCities}
                   />
@@ -336,7 +297,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                     <input
                       type="file"
                       accept=".csv,.xlsx,.xls"
-                      disabled={importing || isParsing}
+                      disabled={isImporting || isParsing}
                       onChange={(e) => void handleSlotFile(batch.id, e.target.files?.[0] ?? null)}
                       className="block w-full text-sm text-slate file:mr-3 file:rounded-full file:border-0 file:bg-cyan file:px-4 file:py-2 file:text-sm file:font-semibold file:text-navy hover:file:bg-cyan-bright disabled:opacity-50"
                     />
@@ -366,7 +327,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
 
         <button
           type="button"
-          disabled={importing || loadingCities}
+          disabled={isImporting || loadingCities}
           onClick={addSheet}
           className={cn(
             'w-full rounded-xl border border-dashed border-border py-3 text-sm font-semibold text-cyan',
@@ -380,11 +341,11 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
           <input
             type="checkbox"
             checked={skipExisting}
-            disabled={importing}
+            disabled={isImporting}
             onChange={(e) => setSkipExisting(e.target.checked)}
             className="rounded border-border text-cyan focus:ring-cyan"
           />
-          Skip items that already exist (same link)
+          Skip items that already exist (same link). Uncheck to replace thumbnails for existing tours.
         </label>
 
         {filledSlots > 0 && (
@@ -398,7 +359,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
           <button
             type="button"
             disabled={
-              importing ||
+              isImporting ||
               readyBatches.length === 0 ||
               !session?.access_token ||
               serverReady === false
@@ -410,13 +371,13 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
               'disabled:opacity-50 disabled:cursor-not-allowed',
             )}
           >
-            {importing ? `Importing… ${pct}%` : 'Start import'}
+            {isImporting ? `Importing… ${pct}%` : 'Start import'}
           </button>
 
           {filledSlots > 0 && (
             <button
               type="button"
-              disabled={importing}
+              disabled={isImporting}
               onClick={clearBatches}
               className="rounded-full px-6 py-3 text-sm font-semibold text-slate border border-border hover:border-slate disabled:opacity-50"
             >
@@ -426,7 +387,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
         </div>
       </AdminCard>
 
-      {(importing || log.length > 0) && (
+      {(isImporting || log.length > 0) && (
         <AdminCard className="p-6 mb-6">
           <div className="flex items-center justify-between gap-4 mb-4">
             <h2 className="font-display text-lg font-bold text-navy">Progress</h2>
@@ -475,7 +436,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
         </AdminCard>
       )}
 
-      {readyBatches.length > 0 && !importing && log.length === 0 && (
+      {readyBatches.length > 0 && !isImporting && log.length === 0 && (
         <AdminCard className="overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
             <h2 className="font-display text-lg font-bold text-navy">Preview</h2>

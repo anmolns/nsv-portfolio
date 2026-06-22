@@ -1,6 +1,6 @@
 import http from 'node:http'
 import { createClient } from '@supabase/supabase-js'
-import { portfolioIdFromUrl, slugFromUrl } from '../scripts/lib/tour-import-utils.mjs'
+import { portfolioIdFromUrl, resolveMediaTypeFromLink, slugFromUrl } from '../scripts/lib/tour-import-utils.mjs'
 import { launchTourBrowser, screenshotTourToBuffer } from '../scripts/lib/tour-screenshot.mjs'
 import { screenshotYoutubeToBuffer } from '../scripts/lib/youtube-screenshot.mjs'
 
@@ -168,7 +168,8 @@ async function processBulkImport(req, res) {
         continue
       }
 
-      const baseId = idFromLink(link, mediaType)
+      const resolvedMediaType = resolveMediaTypeFromLink(link, mediaType)
+      const baseId = idFromLink(link, resolvedMediaType)
       const displayName = name || baseId
 
       sendSse(res, 'item', {
@@ -180,11 +181,39 @@ async function processBulkImport(req, res) {
 
       const { data: existingByLink } = await adminClient
         .from('portfolio_items')
-        .select('id, name')
+        .select('id, name, media_type')
         .eq('link', link)
         .maybeSingle()
 
       if (existingByLink && skipExisting) {
+        if (existingByLink.media_type !== resolvedMediaType) {
+          const { error: fixError } = await adminClient
+            .from('portfolio_items')
+            .update({ media_type: resolvedMediaType })
+            .eq('id', existingByLink.id)
+          if (fixError) {
+            failed++
+            sendSse(res, 'item', {
+              index: i + 1,
+              total: rows.length,
+              name: displayName,
+              status: 'error',
+              message: fixError.message,
+            })
+            continue
+          }
+          success++
+          sendSse(res, 'item', {
+            index: i + 1,
+            total: rows.length,
+            name: displayName,
+            status: 'done',
+            message: `Fixed media type → ${resolvedMediaType === 'video' ? 'Video' : 'VR'}`,
+            id: existingByLink.id,
+          })
+          continue
+        }
+
         skipped++
         sendSse(res, 'item', {
           index: i + 1,
@@ -209,7 +238,7 @@ async function processBulkImport(req, res) {
 
       let thumbnailPath = null
       try {
-        const buffer = await captureThumbnail(page, link, mediaType)
+        const buffer = await captureThumbnail(page, link, resolvedMediaType)
         thumbnailPath = `${tourId}.jpg`
         const { error: uploadError } = await adminClient.storage
           .from('tour-thumbs')
@@ -247,7 +276,7 @@ async function processBulkImport(req, res) {
               name: displayName,
               thumbnail_path: thumbnailPath,
               city_id: cityId,
-              media_type: mediaType,
+              media_type: resolvedMediaType,
             })
             .eq('id', tourId)
           if (error) throw new Error(error.message)
@@ -258,7 +287,7 @@ async function processBulkImport(req, res) {
             link,
             thumbnail_path: thumbnailPath,
             city_id: cityId,
-            media_type: mediaType,
+            media_type: resolvedMediaType,
             is_published: true,
             sort_order: sortOrder++,
           })

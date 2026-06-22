@@ -5,12 +5,12 @@ import { getPortfolioThumbnail } from '../../lib/portfolioMedia'
 import {
   deleteTour,
   duplicateTour,
-  fetchAdminCities,
+  fetchAdminFilterCities,
   fetchAdminTours,
   reorderTours,
 } from '../api/adminPortfolio'
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
-import type { CityRow, PortfolioItemRow } from '../types'
+import type { CityWithCount, PortfolioItemRow } from '../types'
 
 type MediaFilter = 'all' | 'video' | 'virtual-tour'
 type StatusFilter = 'all' | 'published' | 'draft'
@@ -18,7 +18,7 @@ type StatusFilter = 'all' | 'published' | 'draft'
 export function ToursPage() {
   const navigate = useNavigate()
   const [tours, setTours] = useState<PortfolioItemRow[]>([])
-  const [cities, setCities] = useState<CityRow[]>([])
+  const [cities, setCities] = useState<CityWithCount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -32,7 +32,7 @@ export function ToursPage() {
 
   const load = () => {
     setLoading(true)
-    Promise.all([fetchAdminTours(), fetchAdminCities()])
+    Promise.all([fetchAdminTours(), fetchAdminFilterCities()])
       .then(([tourRows, cityRows]) => {
         setTours(tourRows)
         setCities(cityRows)
@@ -51,13 +51,21 @@ export function ToursPage() {
       if (q && !t.name.toLowerCase().includes(q) && !t.id.toLowerCase().includes(q)) {
         return false
       }
-      if (cityFilter !== 'all' && t.city_id !== cityFilter) return false
+      if (cityFilter === 'none' && t.city_id) return false
+      if (cityFilter !== 'all' && cityFilter !== 'none' && t.city_id !== cityFilter) return false
       if (mediaFilter !== 'all' && t.media_type !== mediaFilter) return false
       if (statusFilter === 'published' && !t.is_published) return false
       if (statusFilter === 'draft' && t.is_published) return false
       return true
     })
   }, [tours, search, cityFilter, mediaFilter, statusFilter])
+
+  const noCityCount = useMemo(() => tours.filter((t) => !t.city_id).length, [tours])
+
+  const filterCities = useMemo(
+    () => cities.filter((c) => c.is_active || c.tour_count > 0).sort((a, b) => a.name.localeCompare(b.name)),
+    [cities],
+  )
 
   const canReorder =
     !search.trim() &&
@@ -158,9 +166,14 @@ export function ToursPage() {
             className={selectClass}
           >
             <option value="all">All cities</option>
-            {cities.map((c) => (
+            {noCityCount > 0 && (
+              <option value="none">No city ({noCityCount})</option>
+            )}
+            {filterCities.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
+                {c.tour_count > 0 ? ` (${c.tour_count})` : ''}
+                {!c.is_active ? ' · hidden' : ''}
               </option>
             ))}
           </select>
@@ -239,7 +252,10 @@ export function ToursPage() {
                     <td className="px-3 py-4">
                       <div className="w-16 h-12 rounded-lg overflow-hidden bg-navy/5">
                         <img
-                          src={getPortfolioThumbnail(tour.thumbnail_path)}
+                          src={getPortfolioThumbnail(
+                            tour.thumbnail_path,
+                            tour.updated_at ?? tour.id,
+                          )}
                           alt=""
                           className="w-full h-full object-cover"
                         />

@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 
 import { cn } from '../../lib/utils'
 import { createCity } from '../api/adminPortfolio'
+import { canonicalCityName } from '../lib/cityNames'
 import type { CityRow } from '../types'
 
 interface CityPickerProps {
@@ -57,7 +58,11 @@ export function CityPicker({
   const canCreate = useMemo(() => {
     const q = query.trim()
     if (!q) return false
-    return !cities.some((c) => c.name.toLowerCase() === q.toLowerCase())
+    const canonical = canonicalCityName(q).toLowerCase()
+    return !cities.some(
+      (c) =>
+        c.name.toLowerCase() === q.toLowerCase() || c.name.toLowerCase() === canonical,
+    )
   }, [cities, query])
 
   const handleSelect = (city: CityRow) => {

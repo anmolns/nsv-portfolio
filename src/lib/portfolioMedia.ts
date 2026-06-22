@@ -33,11 +33,19 @@ export function optimizeThumbnailUrl(url: string): string {
   return url
 }
 
-export function getPortfolioThumbnail(thumbnail?: string | null): string {
+export function getPortfolioThumbnail(thumbnail?: string | null, cacheBust?: string | number): string {
   const value = thumbnail?.trim()
   if (!value) return GENERIC_PORTFOLIO_THUMBNAIL
-  if (value.startsWith('/')) return optimizeThumbnailUrl(value)
-  if (value.startsWith('http')) return optimizeThumbnailUrl(value)
-  if (isSupabaseConfigured()) return getTourThumbPublicUrl(value)
-  return optimizeThumbnailUrl(value)
+
+  let url: string
+  if (value.startsWith('/')) url = optimizeThumbnailUrl(value)
+  else if (value.startsWith('http')) url = optimizeThumbnailUrl(value)
+  else if (isSupabaseConfigured()) url = getTourThumbPublicUrl(value)
+  else url = optimizeThumbnailUrl(value)
+
+  if (cacheBust !== undefined && cacheBust !== '') {
+    const sep = url.includes('?') ? '&' : '?'
+    return `${url}${sep}v=${encodeURIComponent(String(cacheBust))}`
+  }
+  return url
 }

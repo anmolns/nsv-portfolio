@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { AdminGuard } from './components/AdminGuard'
 import { AdminLayout } from './components/AdminLayout'
+import { BulkImportProvider } from './context/BulkImportContext'
 import { AdminAuthProvider } from './context/AdminAuthContext'
 import { BulkUploadPage } from './pages/BulkUploadPage'
 import { CitiesPage } from './pages/CitiesPage'
@@ -36,6 +37,7 @@ export default function AdminApp() {
 
   return (
     <AdminAuthProvider>
+      <BulkImportProvider>
       <Routes>
       <Route path="login" element={<LoginPage />} />
       <Route element={<AdminGuard />}>
@@ -50,6 +52,7 @@ export default function AdminApp() {
       </Route>
       <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
+      </BulkImportProvider>
     </AdminAuthProvider>
   )
 }

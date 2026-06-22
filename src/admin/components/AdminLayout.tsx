@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
+import { BulkImportStatusBar } from './BulkImportStatusBar'
 import { Logo } from '../../components/ui/Logo'
 import { cn } from '../../lib/utils'
 import { useAdminAuthContext } from '../context/AdminAuthContext'
@@ -112,10 +113,12 @@ export function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 p-5 sm:p-8 lg:p-10">
+        <main className="flex-1 p-5 sm:p-8 lg:p-10 pb-24">
           <Outlet />
         </main>
       </div>
+
+      <BulkImportStatusBar />
     </div>
   )
 }

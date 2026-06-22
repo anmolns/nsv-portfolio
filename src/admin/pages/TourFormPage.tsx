@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 import { getPortfolioThumbnail } from '../../lib/portfolioMedia'
+import { inferMediaTypeFromLink } from '../../lib/portfolioLink'
 import { slugify } from '../../lib/utils'
 import {
   createTour,
@@ -49,6 +50,8 @@ export function TourFormPage() {
   const [thumbFile, setThumbFile] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(null)
   const [existingThumb, setExistingThumb] = useState<string | null>(null)
+  const [thumbCacheKey, setThumbCacheKey] = useState(0)
+  const [thumbUploading, setThumbUploading] = useState(false)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -108,18 +111,23 @@ export function TourFormPage() {
         }
 
         const draft = readTourFormDraft(draftKey)
+        const link = draft?.link?.trim() || tour.link
         const loaded = {
           id: tour.id,
           name: tour.name,
           link: tour.link,
           city_id: tour.city_id ?? '',
-          media_type: tour.media_type,
+          media_type: inferMediaTypeFromLink(link),
           is_published: tour.is_published,
           sort_order: tour.sort_order,
         }
 
         serverLoaded.current = true
-        setForm(draft && hasTourFormDraftContent(draft) ? draft : loaded)
+        setForm(
+          draft && hasTourFormDraftContent(draft)
+            ? { ...draft, media_type: inferMediaTypeFromLink(draft.link || tour.link) }
+            : loaded,
+        )
         setExistingThumb(tour.thumbnail_path)
         setIdTouched(true)
       })
@@ -159,7 +167,7 @@ export function TourFormPage() {
       let thumbnailPath = existingThumb
 
       if (thumbFile) {
-        thumbnailPath = await uploadTourThumbnail(form.id, thumbFile)
+        thumbnailPath = await uploadTourThumbnail(form.id, thumbFile, existingThumb)
       }
 
       const payload = {
@@ -197,8 +205,30 @@ export function TourFormPage() {
     )
   }
 
-  const previewSrc = thumbPreview ?? getPortfolioThumbnail(existingThumb)
+  const previewSrc =
+    thumbPreview ?? getPortfolioThumbnail(existingThumb, thumbCacheKey || undefined)
   const hasThumbnail = Boolean(thumbPreview || existingThumb)
+
+  const handleThumbFile = async (file: File | null) => {
+    if (!file) return
+    setThumbFile(file)
+    setError(null)
+
+    if (isEdit && id) {
+      setThumbUploading(true)
+      try {
+        const path = await uploadTourThumbnail(form.id, file, existingThumb)
+        await updateTour(id, { thumbnail_path: path })
+        setExistingThumb(path)
+        setThumbFile(null)
+        setThumbCacheKey(Date.now())
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Thumbnail upload failed')
+      } finally {
+        setThumbUploading(false)
+      }
+    }
+  }
 
   const handleRemoveThumbnail = async () => {
     if (isEdit && id && existingThumb) {
@@ -213,6 +243,7 @@ export function TourFormPage() {
     setExistingThumb(null)
     setThumbFile(null)
     setThumbPreview(null)
+    setThumbCacheKey(Date.now())
   }
 
   return (
@@ -280,7 +311,14 @@ export function TourFormPage() {
               <input
                 type="url"
                 value={form.link}
-                onChange={(e) => setForm((f) => ({ ...f, link: e.target.value }))}
+                onChange={(e) => {
+                  const link = e.target.value
+                  setForm((f) => ({
+                    ...f,
+                    link,
+                    media_type: inferMediaTypeFromLink(link),
+                  }))
+                }}
                 className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
                 placeholder="https://nsventures.in/..."
               />
@@ -311,6 +349,9 @@ export function TourFormPage() {
                   <option value="virtual-tour">Virtual tour</option>
                   <option value="video">Video</option>
                 </select>
+                <p className="mt-2 text-xs text-slate-light">
+                  YouTube links are auto-set to Video.
+                </p>
               </div>
             </div>
 
@@ -358,10 +399,19 @@ export function TourFormPage() {
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => setThumbFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-slate file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-cyan file:text-navy file:font-bold file:text-xs hover:file:bg-cyan-bright"
+                disabled={thumbUploading}
+                onChange={(e) => void handleThumbFile(e.target.files?.[0] ?? null)}
+                className="block w-full text-sm text-slate file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-cyan file:text-navy file:font-bold file:text-xs hover:file:bg-cyan-bright disabled:opacity-60"
               />
             </label>
+            {thumbUploading && (
+              <p className="mt-2 text-xs text-cyan font-semibold">Uploading thumbnail…</p>
+            )}
+            {isEdit && !thumbUploading && (
+              <p className="mt-2 text-xs text-slate-light">
+                New image saves immediately on edit.
+              </p>
+            )}
             {hasThumbnail && (
               <button
                 type="button"
