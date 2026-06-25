@@ -3,9 +3,9 @@ import { fetchPortfolioPage, PORTFOLIO_PAGE_SIZE } from '../api/portfolio'
 import type { PortfolioEntry, PortfolioMediaType } from '../types/portfolio'
 
 interface UsePortfolioOptions {
-  city: string
-  mediaType: PortfolioMediaType | 'all'
-  category?: string
+  city: string | null
+  mediaType: PortfolioMediaType
+  category: string | null
 }
 
 export function usePortfolio({ city, mediaType, category }: UsePortfolioOptions) {
@@ -30,10 +30,9 @@ export function usePortfolio({ city, mediaType, category }: UsePortfolioOptions)
         const result = await fetchPortfolioPage({
           page: nextPage,
           pageSize: PORTFOLIO_PAGE_SIZE,
-          city: city === 'All' ? undefined : city,
-          mediaType: mediaType === 'all' ? undefined : mediaType,
-          category:
-            mediaType === 'video' && category && category !== 'All' ? category : undefined,
+          city: city ?? undefined,
+          mediaType,
+          category: category ?? undefined,
         })
 
         if (id !== requestId.current) return

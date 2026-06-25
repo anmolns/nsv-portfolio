@@ -1,14 +1,19 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { PortfolioEntry } from '../../types/portfolio'
+import { getPortfolioViewerSrc } from '../../lib/portfolioViewer'
 
 interface PortfolioVideoModalProps {
   entry: PortfolioEntry | null
   onClose: () => void
 }
 
-/** Lightweight modal — native video only, no iframe */
 export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps) {
+  const viewer = useMemo(
+    () => (entry ? getPortfolioViewerSrc(entry) : null),
+    [entry],
+  )
+
   useEffect(() => {
     if (!entry) return
     document.body.style.overflow = 'hidden'
@@ -20,9 +25,11 @@ export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps
     }
   }, [entry, onClose])
 
+  const isVirtualTour = entry?.mediaType === 'virtual-tour'
+
   return (
     <AnimatePresence>
-      {entry && (
+      {entry && viewer && (
         <motion.div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
           initial={{ opacity: 0 }}
@@ -36,7 +43,9 @@ export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps
           />
 
           <motion.div
-            className="relative w-full max-w-5xl bg-navy rounded-xl overflow-hidden border border-white/10 flex flex-col"
+            className={`relative w-full bg-navy rounded-xl overflow-hidden border border-white/10 flex flex-col ${
+              isVirtualTour ? 'max-w-6xl h-[min(90vh,900px)]' : 'max-w-5xl'
+            }`}
             data-lenis-prevent
             initial={{ y: 24, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -64,14 +73,28 @@ export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps
               </button>
             </div>
 
-            <video
-              key={entry.id}
-              src={entry.link}
-              controls
-              playsInline
-              preload="metadata"
-              className="w-full aspect-video bg-black object-contain"
-            />
+            {viewer.mode === 'native-video' ? (
+              <video
+                key={entry.id}
+                src={viewer.src}
+                controls
+                playsInline
+                autoPlay
+                preload="metadata"
+                className="w-full aspect-video bg-black object-contain"
+              />
+            ) : (
+              <iframe
+                key={entry.id}
+                src={viewer.src}
+                title={entry.name}
+                className={`w-full bg-black border-0 ${
+                  isVirtualTour ? 'flex-1 min-h-0' : 'aspect-video'
+                }`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking"
+                allowFullScreen
+              />
+            )}
           </motion.div>
         </motion.div>
       )}

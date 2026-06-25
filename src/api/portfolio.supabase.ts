@@ -9,9 +9,9 @@ export async function fetchPortfolioPageFromSupabase(
   const { data, error } = await supabase.rpc('get_portfolio_page', {
     p_page: query.page,
     p_page_size: query.pageSize,
-    p_city: query.city && query.city !== 'All' ? query.city : null,
+    p_city: query.city || null,
     p_media_type: query.mediaType && query.mediaType !== 'all' ? query.mediaType : null,
-    p_category: query.category && query.category !== 'All' ? query.category : null,
+    p_category: query.category || null,
   })
 
   if (error) {

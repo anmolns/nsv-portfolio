@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { parseMediaFilter } from '../../lib/portfolioNav'
 import type { PortfolioEntry, PortfolioMediaType } from '../../types/portfolio'
 import { PortfolioCard } from '../ui/PortfolioCard'
 import { PortfolioVideoModal } from '../ui/PortfolioVideoModal'
 import { openPortfolioEntry } from '../../lib/openPortfolioLink'
+
+const CARD_GRID =
+  'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-5 xl:gap-6'
+
+const selectClass =
+  'w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 disabled:opacity-60'
 
 function FilterPill({
   label,
@@ -14,7 +21,7 @@ function FilterPill({
   onClick,
 }: {
   label: string
-  count: number
+  count?: number
   isActive: boolean
   disabled?: boolean
   onClick: () => void
@@ -34,34 +41,67 @@ function FilterPill({
       data-cursor="pointer"
     >
       {label}
-      <span className={`ml-1 ${isActive ? 'text-cyan' : 'opacity-50'}`}>({count})</span>
+      {count !== undefined && (
+        <span className={`ml-1 ${isActive ? 'text-cyan' : 'opacity-50'}`}>({count})</span>
+      )}
     </button>
   )
 }
 
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+  disabled,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  options: { value: string; label: string }[]
+  disabled?: boolean
+}) {
+  return (
+    <div className="min-w-0 flex-1 sm:flex-none sm:w-[min(100%,280px)]">
+      <label className="block text-[10px] uppercase tracking-[0.2em] text-slate font-semibold mb-2">
+        {label}
+      </label>
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        className={selectClass}
+      >
+        {options.map((opt) => (
+          <option key={opt.value || '__all__'} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 export function Portfolio() {
-  const [activeCity, setActiveCity] = useState<string>('All')
-  const [activeCategory, setActiveCategory] = useState<string>('All')
-  const [mediaFilter, setMediaFilter] = useState<PortfolioMediaType | 'all'>(() =>
+  const [mediaFilter, setMediaFilter] = useState<PortfolioMediaType>(() =>
     parseMediaFilter(window.location.hash),
   )
+  const [activeCity, setActiveCity] = useState<string | null>(null)
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [videoEntry, setVideoEntry] = useState<PortfolioEntry | null>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  const showCategoryFilter = mediaFilter === 'video'
-
-  const { items, cityCounts, categoryCounts, total, hasMore, loading, loadingMore, error, loadMore, retry } =
+  const { items, cityCounts, categoryCounts, hasMore, loading, loadingMore, error, loadMore, retry } =
     usePortfolio({
       city: activeCity,
       mediaType: mediaFilter,
-      category: showCategoryFilter ? activeCategory : undefined,
+      category: activeCategory,
     })
 
   useEffect(() => {
     const onHashChange = () => setMediaFilter(parseMediaFilter(window.location.hash))
     const onFilter = (e: Event) => {
-      const filter = (e as CustomEvent<PortfolioMediaType>).detail
-      setMediaFilter(filter)
+      setMediaFilter((e as CustomEvent<PortfolioMediaType>).detail)
     }
     window.addEventListener('hashchange', onHashChange)
     window.addEventListener('portfolio-filter', onFilter)
@@ -72,8 +112,9 @@ export function Portfolio() {
   }, [])
 
   useEffect(() => {
-    if (!showCategoryFilter) setActiveCategory('All')
-  }, [showCategoryFilter])
+    setActiveCity(null)
+    setActiveCategory(null)
+  }, [mediaFilter])
 
   useEffect(() => {
     const sentinel = loadMoreRef.current
@@ -91,18 +132,7 @@ export function Portfolio() {
   }, [hasMore, loading, loadingMore, loadMore, items.length])
 
   const handleOpen = (entry: PortfolioEntry) => {
-    const result = openPortfolioEntry(entry)
-    if (result === 'video-modal') setVideoEntry(entry)
-  }
-
-  const getCityCount = (city: string) => {
-    if (city === 'All') return total
-    return cityCounts[city] ?? 0
-  }
-
-  const getCategoryCount = (category: string) => {
-    if (category === 'All') return total
-    return categoryCounts[category] ?? 0
+    if (openPortfolioEntry(entry) === 'modal') setVideoEntry(entry)
   }
 
   const filterCities = useMemo(
@@ -111,14 +141,32 @@ export function Portfolio() {
   )
 
   const filterCategories = useMemo(
-    () => Object.keys(categoryCounts).sort((a, b) => a.localeCompare(b)),
+    () =>
+      Object.keys(categoryCounts)
+        .filter((c) => (categoryCounts[c] ?? 0) > 0)
+        .sort((a, b) => a.localeCompare(b)),
     [categoryCounts],
   )
 
+  const categoryOptions = useMemo(
+    () => [
+      { value: '', label: 'All categories' },
+      ...filterCategories.map((category) => ({
+        value: category,
+        label: `${category} (${categoryCounts[category] ?? 0})`,
+      })),
+    ],
+    [categoryCounts, filterCategories],
+  )
+
+  const showCategoryFilter = mediaFilter === 'video' && filterCategories.length > 0
+
   const emptyMessage =
-    showCategoryFilter && activeCategory !== 'All'
-      ? 'No videos in this category yet.'
-      : 'No projects in this city yet.'
+    activeCategory || activeCity
+      ? 'No projects match your filters.'
+      : mediaFilter === 'video'
+        ? 'No videos yet.'
+        : 'No virtual tours yet.'
 
   return (
     <>
@@ -128,44 +176,35 @@ export function Portfolio() {
         aria-label="Portfolio"
       >
         <div className="w-full px-5 sm:px-8 lg:px-10 xl:px-14">
-          <div
-            className="flex flex-wrap gap-1.5 mb-4 lg:mb-5"
-            role="tablist"
-            aria-label="Filter by city"
-          >
-            {(['All', ...filterCities] as const).map((city) => (
-              <FilterPill
-                key={city}
-                label={city}
-                count={getCityCount(city)}
-                isActive={activeCity === city}
-                disabled={loading && activeCity === city}
-                onClick={() => setActiveCity(city)}
-              />
-            ))}
-          </div>
+          {filterCities.length > 0 && (
+            <div className="mb-6 lg:mb-8 space-y-4">
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="tablist"
+                aria-label="Filter by city"
+              >
+                {filterCities.map((city) => (
+                  <FilterPill
+                    key={city}
+                    label={city}
+                    count={cityCounts[city] ?? 0}
+                    isActive={activeCity === city}
+                    disabled={loading && activeCity === city}
+                    onClick={() => setActiveCity(activeCity === city ? null : city)}
+                  />
+                ))}
+              </div>
 
-          {showCategoryFilter && filterCategories.length > 0 && (
-            <div
-              className="flex flex-wrap gap-1.5 mb-6 lg:mb-8"
-              role="tablist"
-              aria-label="Filter videos by category"
-            >
-              {(['All', ...filterCategories] as const).map((category) => (
-                <FilterPill
-                  key={category}
-                  label={category}
-                  count={getCategoryCount(category)}
-                  isActive={activeCategory === category}
-                  disabled={loading && activeCategory === category}
-                  onClick={() => setActiveCategory(category)}
+              {showCategoryFilter && (
+                <FilterSelect
+                  label="Category"
+                  value={activeCategory ?? ''}
+                  disabled={loading}
+                  onChange={(value) => setActiveCategory(value || null)}
+                  options={categoryOptions}
                 />
-              ))}
+              )}
             </div>
-          )}
-
-          {(!showCategoryFilter || filterCategories.length === 0) && (
-            <div className="mb-2 lg:mb-3" aria-hidden />
           )}
 
           {error && (
@@ -183,8 +222,8 @@ export function Portfolio() {
           )}
 
           {loading && items.length === 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
-              {Array.from({ length: 12 }).map((_, i) => (
+            <div className={CARD_GRID}>
+              {Array.from({ length: 10 }).map((_, i) => (
                 <div
                   key={i}
                   className="aspect-[4/3] rounded-xl bg-navy/5 animate-pulse"
@@ -195,7 +234,7 @@ export function Portfolio() {
           ) : items.length === 0 ? (
             <p className="text-center text-slate py-12 text-sm">{emptyMessage}</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
+            <div className={CARD_GRID}>
               {items.map((entry) => (
                 <PortfolioCard key={entry.id} entry={entry} onOpen={handleOpen} />
               ))}

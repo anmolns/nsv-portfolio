@@ -49,7 +49,7 @@ export function PortfolioCard({
     >
       <div className="w-full" style={{ perspective: '1000px' }}>
         <motion.div
-          className="relative w-full aspect-[4/3] cursor-pointer rounded-xl"
+          className="relative w-full aspect-[4/3] cursor-pointer rounded-2xl"
           style={{ transformStyle: 'preserve-3d' }}
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
@@ -57,7 +57,7 @@ export function PortfolioCard({
           data-cursor="pointer"
         >
           <div
-            className="absolute inset-0 rounded-xl overflow-hidden bg-navy shadow-sm shadow-navy/5"
+            className="absolute inset-0 rounded-2xl overflow-hidden bg-navy shadow-md shadow-navy/10"
             style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
           >
             <img
@@ -73,7 +73,7 @@ export function PortfolioCard({
           </div>
 
           <div
-            className="absolute inset-0 overflow-hidden rounded-xl"
+            className="absolute inset-0 overflow-hidden rounded-2xl"
             style={{
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
@@ -83,20 +83,20 @@ export function PortfolioCard({
             <div className="absolute inset-0 bg-gradient-to-br from-navy-deep via-navy to-navy-card" />
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_110%,rgba(41,171,226,0.28),transparent_62%)]" />
 
-            <div className="relative z-10 flex h-full flex-col items-center justify-center px-3 py-3 text-center sm:px-4">
-              {isVideo && entry.category && (
-                <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.32em] text-cyan-bright/90 sm:text-xs">
+            <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 py-4 text-center sm:px-5 sm:py-5">
+              {entry.category && (
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-bright/90 sm:text-sm">
                   {entry.category}
                 </p>
               )}
 
-              <h3 className="font-display line-clamp-3 max-w-[96%] text-lg font-extrabold leading-[1.15] tracking-[-0.02em] text-balance sm:text-xl md:text-2xl">
+              <h3 className="font-display line-clamp-3 max-w-[96%] text-2xl font-extrabold leading-[1.12] tracking-[-0.02em] text-balance sm:text-3xl lg:text-[2rem] xl:text-[2.15rem]">
                 <span className="bg-gradient-to-b from-white via-white to-cyan-bright/90 bg-clip-text text-transparent">
                   {entry.name}
                 </span>
               </h3>
 
-              <p className="mt-3 text-xs font-medium uppercase tracking-[0.26em] text-white/45 sm:text-sm">
+              <p className="mt-4 text-sm font-medium uppercase tracking-[0.22em] text-white/50 sm:text-base">
                 {isVideo ? 'Watch' : 'Virtual Tour'}
               </p>
             </div>

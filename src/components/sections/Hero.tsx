@@ -4,7 +4,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion } from 'framer-motion'
 import { HERO_VIDEO, HERO_POSTER } from '../../constants/hero'
 import { MagneticButton } from '../ui/Motion'
-import { scrollToPortfolioFilter } from '../../lib/portfolioNav'
+import { scrollToPortfolioFilter, parseMediaFilter } from '../../lib/portfolioNav'
+import type { PortfolioMediaType } from '../../types/portfolio'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -21,6 +22,22 @@ export function Hero() {
   const sectionRef = useRef<HTMLElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [videoReady, setVideoReady] = useState(false)
+  const [activeTab, setActiveTab] = useState<PortfolioMediaType>(() =>
+    parseMediaFilter(window.location.hash),
+  )
+
+  useEffect(() => {
+    const sync = () => setActiveTab(parseMediaFilter(window.location.hash))
+    const onFilter = (e: Event) => {
+      setActiveTab((e as CustomEvent<PortfolioMediaType>).detail)
+    }
+    window.addEventListener('hashchange', sync)
+    window.addEventListener('portfolio-filter', onFilter)
+    return () => {
+      window.removeEventListener('hashchange', sync)
+      window.removeEventListener('portfolio-filter', onFilter)
+    }
+  }, [])
 
   useEffect(() => {
     const section = sectionRef.current
@@ -74,8 +91,14 @@ export function Hero() {
     }
   }, [])
 
-  const goToVideos = () => scrollToPortfolioFilter('video')
-  const goToVirtualReality = () => scrollToPortfolioFilter('virtual-tour')
+  const goToVideos = () => {
+    setActiveTab('video')
+    scrollToPortfolioFilter('video')
+  }
+  const goToVirtualReality = () => {
+    setActiveTab('virtual-tour')
+    scrollToPortfolioFilter('virtual-tour')
+  }
 
   return (
     <section
@@ -128,6 +151,7 @@ export function Hero() {
           <MagneticButton
             size="xl"
             className="w-full text-base sm:w-auto sm:text-lg"
+            variant={activeTab === 'video' ? 'primary' : 'secondary'}
             onClick={goToVideos}
             data-cursor="pointer"
           >
@@ -136,7 +160,7 @@ export function Hero() {
           <MagneticButton
             size="xl"
             className="w-full text-base sm:w-auto sm:text-lg"
-            variant="secondary"
+            variant={activeTab === 'virtual-tour' ? 'primary' : 'secondary'}
             onClick={goToVirtualReality}
             data-cursor="pointer"
           >

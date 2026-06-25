@@ -5,14 +5,15 @@
 1. **SQL Editor** → run `supabase/migrations/001_initial.sql`
 2. **SQL Editor** → run `supabase/migrations/002_portfolio_category.sql` (video categories from bulk upload)
 3. **SQL Editor** → run `supabase/migrations/003_portfolio_category_filter.sql` (category filter on live site)
-4. Add `.env.local`:
+4. **SQL Editor** → run `supabase/migrations/004_category_counts_by_media_type.sql` (category counts per videos / VR page)
+5. Add `.env.local`:
 
 ```env
 VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-5. Restart `npm run dev`
+6. Restart `npm run dev`
 
 ---
 

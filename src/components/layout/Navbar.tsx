@@ -46,16 +46,6 @@ export function Navbar({ }: NavbarProps) {
         </a>
 
         <div className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
-          {/* <motion.button
-            type="button"
-            onClick={onInquiryClick}
-            className="inline-flex items-center px-4 py-2.5 rounded-full border border-white/35 bg-white/5 text-white text-xs sm:text-sm font-bold tracking-wide hover:border-cyan hover:text-cyan transition-colors duration-300"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            data-cursor="pointer"
-          >
-            Start Your Work
-          </motion.button> */}
           <motion.a
             href={contact.phoneTel}
             className="inline-flex shrink-0 items-center justify-center rounded-full bg-cyan px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan/25 transition-colors duration-300 hover:bg-cyan-bright sm:px-6 sm:py-3 sm:text-base"
