@@ -8,9 +8,6 @@ import { openPortfolioEntry } from '../../lib/openPortfolioLink'
 
 const CARD_GRID = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6'
 
-const selectClass =
-  'w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 disabled:opacity-60'
-
 function FilterPill({
   label,
   count,
@@ -31,52 +28,18 @@ function FilterPill({
       aria-selected={isActive}
       disabled={disabled}
       onClick={onClick}
-      className={`px-4 py-2 rounded-full text-[11px] sm:text-xs tracking-[0.08em] uppercase font-semibold transition-all duration-300 border ${
+      className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.05em] transition-colors sm:px-4 sm:py-2 sm:text-sm ${
         isActive
-          ? 'bg-navy text-white border-navy shadow-sm shadow-navy/20'
-          : 'bg-white text-slate border-border hover:border-cyan hover:text-cyan'
+          ? 'border-navy bg-navy text-white shadow-sm shadow-navy/20'
+          : 'border-border bg-white text-slate hover:border-cyan hover:text-cyan'
       }`}
       data-cursor="pointer"
     >
       {label}
       {count !== undefined && (
-        <span className={`ml-1 ${isActive ? 'text-cyan' : 'opacity-50'}`}>({count})</span>
+        <span className={`ml-1 tabular-nums ${isActive ? 'text-cyan' : 'opacity-50'}`}>({count})</span>
       )}
     </button>
-  )
-}
-
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-  disabled,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: { value: string; label: string }[]
-  disabled?: boolean
-}) {
-  return (
-    <div className="min-w-0 flex-1 sm:flex-none sm:w-[min(100%,280px)]">
-      <label className="block text-[10px] uppercase tracking-[0.2em] text-slate font-semibold mb-2">
-        {label}
-      </label>
-      <select
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        className={selectClass}
-      >
-        {options.map((opt) => (
-          <option key={opt.value || '__all__'} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
   )
 }
 
@@ -113,6 +76,10 @@ export function Portfolio() {
     setActiveCategory(null)
     setActiveCity(null)
   }, [mediaFilter])
+
+  useEffect(() => {
+    setActiveCategory(null)
+  }, [activeCity])
 
   const filterCities = useMemo(
     () => Object.keys(cityCounts).sort((a, b) => a.localeCompare(b)),
@@ -152,17 +119,6 @@ export function Portfolio() {
     [categoryCounts],
   )
 
-  const categoryOptions = useMemo(
-    () => [
-      { value: '', label: 'All categories' },
-      ...filterCategories.map((category) => ({
-        value: category,
-        label: `${category} (${categoryCounts[category] ?? 0})`,
-      })),
-    ],
-    [categoryCounts, filterCategories],
-  )
-
   const showCategoryFilter =
     activeCity && mediaFilter === 'video' && filterCategories.length > 0
 
@@ -181,33 +137,51 @@ export function Portfolio() {
       >
         <div className="w-full px-5 sm:px-8 lg:px-10 xl:px-14">
           {filterCities.length > 0 && (
-            <div className="mb-6 lg:mb-8 space-y-4">
-              <div
-                className="flex flex-wrap gap-2"
-                role="tablist"
-                aria-label="Filter by city"
-              >
-                {filterCities.map((city) => (
-                  <FilterPill
-                    key={city}
-                    label={city}
-                    count={cityCounts[city] ?? 0}
-                    isActive={activeCity === city}
-                    disabled={loading && activeCity === city}
-                    onClick={() => setActiveCity(city)}
-                  />
-                ))}
-              </div>
+            <div className="mb-6 rounded-xl border border-border bg-white px-4 py-3.5 sm:px-5 sm:py-4">
+              <div className="flex flex-col gap-3.5">
+                <div
+                  className="flex flex-wrap gap-2"
+                  role="tablist"
+                  aria-label="Filter by city"
+                >
+                  {filterCities.map((city) => (
+                    <FilterPill
+                      key={city}
+                      label={city}
+                      count={cityCounts[city] ?? 0}
+                      isActive={activeCity === city}
+                      disabled={loading && activeCity === city}
+                      onClick={() => setActiveCity(city)}
+                    />
+                  ))}
+                </div>
 
-              {showCategoryFilter && (
-                <FilterSelect
-                  label="Category"
-                  value={activeCategory ?? ''}
-                  disabled={loading}
-                  onChange={(value) => setActiveCategory(value || null)}
-                  options={categoryOptions}
-                />
-              )}
+                {showCategoryFilter && (
+                  <div
+                    className="flex flex-wrap gap-2 border-t border-border/70 pt-3.5"
+                    role="tablist"
+                    aria-label="Filter by category"
+                  >
+                    <FilterPill
+                      label="All"
+                      count={activeCity ? (cityCounts[activeCity] ?? 0) : undefined}
+                      isActive={!activeCategory}
+                      disabled={loading}
+                      onClick={() => setActiveCategory(null)}
+                    />
+                    {filterCategories.map((category) => (
+                      <FilterPill
+                        key={category}
+                        label={category}
+                        count={categoryCounts[category] ?? 0}
+                        isActive={activeCategory === category}
+                        disabled={loading && activeCategory === category}
+                        onClick={() => setActiveCategory(category)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
