@@ -20,6 +20,7 @@ async function fetchPortfolioPageEmpty(query: PortfolioQuery): Promise<Portfolio
     pageSize: query.pageSize,
     hasMore: false,
     cityCounts: emptyCityCounts(),
+    categoryCounts: {},
   }
 }
 

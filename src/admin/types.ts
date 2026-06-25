@@ -12,6 +12,7 @@ export interface PortfolioItemRow {
   thumbnail_path: string | null
   city_id: string | null
   media_type: 'video' | 'virtual-tour'
+  category: string | null
   is_published: boolean
   sort_order: number
   created_at?: string
@@ -25,6 +26,7 @@ export interface TourFormValues {
   link: string
   city_id: string
   media_type: 'video' | 'virtual-tour'
+  category: string
   is_published: boolean
   sort_order: number
 }

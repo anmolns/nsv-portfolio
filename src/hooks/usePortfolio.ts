@@ -5,11 +5,13 @@ import type { PortfolioEntry, PortfolioMediaType } from '../types/portfolio'
 interface UsePortfolioOptions {
   city: string
   mediaType: PortfolioMediaType | 'all'
+  category?: string
 }
 
-export function usePortfolio({ city, mediaType }: UsePortfolioOptions) {
+export function usePortfolio({ city, mediaType, category }: UsePortfolioOptions) {
   const [items, setItems] = useState<PortfolioEntry[]>([])
   const [cityCounts, setCityCounts] = useState<Record<string, number>>({})
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
@@ -30,12 +32,15 @@ export function usePortfolio({ city, mediaType }: UsePortfolioOptions) {
           pageSize: PORTFOLIO_PAGE_SIZE,
           city: city === 'All' ? undefined : city,
           mediaType: mediaType === 'all' ? undefined : mediaType,
+          category:
+            mediaType === 'video' && category && category !== 'All' ? category : undefined,
         })
 
         if (id !== requestId.current) return
 
         setItems((prev) => (replace ? result.items : [...prev, ...result.items]))
         setCityCounts(result.cityCounts)
+        setCategoryCounts(result.categoryCounts ?? {})
         setTotal(result.total)
         setPage(result.page)
         setHasMore(result.hasMore)
@@ -49,7 +54,7 @@ export function usePortfolio({ city, mediaType }: UsePortfolioOptions) {
         }
       }
     },
-    [city, mediaType],
+    [category, city, mediaType],
   )
 
   useEffect(() => {
@@ -67,6 +72,7 @@ export function usePortfolio({ city, mediaType }: UsePortfolioOptions) {
   return {
     items,
     cityCounts,
+    categoryCounts,
     total,
     hasMore,
     loading,

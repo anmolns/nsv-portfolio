@@ -30,6 +30,7 @@ type BulkImportHandler = {
   onStart?: (total: number) => void
   onItem?: (event: BulkImportItemEvent) => void
   onComplete?: (event: BulkImportCompleteEvent) => void
+  onWarn?: (message: string) => void
   onFatal?: (message: string) => void
 }
 
@@ -54,6 +55,7 @@ function parseSseChunk(chunk: string, handlers: BulkImportHandler) {
       else if (eventName === 'item') handlers.onItem?.(data as unknown as BulkImportItemEvent)
       else if (eventName === 'complete')
         handlers.onComplete?.(data as unknown as BulkImportCompleteEvent)
+      else if (eventName === 'warn') handlers.onWarn?.(String(data.message))
       else if (eventName === 'fatal') handlers.onFatal?.(String(data.message))
     } catch {
       // ignore malformed events

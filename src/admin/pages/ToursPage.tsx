@@ -221,6 +221,9 @@ export function ToursPage() {
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider hidden md:table-cell">
                     Type
                   </th>
+                  <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider hidden lg:table-cell">
+                    Category
+                  </th>
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider">
                     Status
                   </th>
@@ -274,6 +277,9 @@ export function ToursPage() {
                       <span className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-navy/5 text-navy">
                         {tour.media_type === 'video' ? 'Video' : 'VR'}
                       </span>
+                    </td>
+                    <td className="px-3 py-4 text-slate hidden lg:table-cell">
+                      {tour.media_type === 'video' ? tour.category ?? '—' : '—'}
                     </td>
                     <td className="px-3 py-4">
                       <span

@@ -19,6 +19,7 @@ interface BulkImportJob {
   progress: number
   log: BulkImportLogEntry[]
   summary: string | null
+  warning: string | null
   fatalError: string | null
   running: boolean
 }
@@ -59,6 +60,7 @@ export function BulkImportProvider({ children }: { children: ReactNode }) {
       progress: 0,
       log: [],
       summary: null,
+      warning: null,
       fatalError: null,
       running: true,
     })
@@ -104,6 +106,9 @@ export function BulkImportProvider({ children }: { children: ReactNode }) {
               totals.success += result.success
               totals.failed += result.failed
               totals.skipped += result.skipped
+            },
+            onWarn: (message) => {
+              setJob((prev) => (prev ? { ...prev, warning: message } : prev))
             },
             onFatal: (message) => {
               setJob((prev) => (prev ? { ...prev, fatalError: message } : prev))

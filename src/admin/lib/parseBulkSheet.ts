@@ -3,6 +3,7 @@ import { isYoutubeLink } from '../../lib/portfolioLink'
 export interface BulkRow {
   name: string
   link: string
+  category?: string | null
 }
 
 export type BulkSheetKind = 'tour' | 'video'
@@ -61,7 +62,8 @@ function resolveColumns(headers: string[]) {
     lower.includes('name') ||
     lower.includes('url') ||
     lower.includes('title') ||
-    lower.some((h) => h.includes('youtube'))
+    lower.some((h) => h.includes('youtube')) ||
+    lower.some((h) => h.includes('category') || h.includes('catgor'))
 
   let nameIdx = lower.indexOf('name')
   if (nameIdx === -1) nameIdx = lower.indexOf('title')
@@ -70,7 +72,11 @@ function resolveColumns(headers: string[]) {
   if (linkIdx === -1) linkIdx = lower.indexOf('url')
   if (linkIdx === -1) linkIdx = lower.findIndex((h) => h.includes('youtube'))
 
-  return { hasHeader, nameIdx, linkIdx }
+  const categoryIdx = lower.findIndex(
+    (h) => h.includes('category') || h.includes('catgor'),
+  )
+
+  return { hasHeader, nameIdx, linkIdx, categoryIdx }
 }
 
 function rowsFromTable(
@@ -78,6 +84,7 @@ function rowsFromTable(
   nameIdx: number,
   linkIdx: number,
   kind: BulkSheetKind,
+  categoryIdx = -1,
 ): BulkRow[] {
   if (linkIdx === -1) {
     throw new Error(
@@ -94,9 +101,13 @@ function rowsFromTable(
     if (kind === 'video' && !isYoutubeLink(link)) continue
 
     const nameRaw = nameIdx >= 0 ? (cols[nameIdx] ?? '').replace(/^"|"$/g, '').trim() : ''
+    const categoryRaw =
+      categoryIdx >= 0 ? (cols[categoryIdx] ?? '').replace(/^"|"$/g, '').trim() : ''
+
     rows.push({
       name: nameRaw || nameFromLink(link),
       link,
+      category: categoryRaw || null,
     })
   }
 
@@ -116,19 +127,33 @@ export function parseBulkCsv(text: string, kind: BulkSheetKind = 'tour'): BulkRo
   if (lines.length === 0) return []
 
   const firstCols = parseCsvLine(lines[0])
-  const { hasHeader, nameIdx, linkIdx } = resolveColumns(firstCols)
+  const { hasHeader, nameIdx, linkIdx, categoryIdx } = resolveColumns(firstCols)
   const dataLines = hasHeader ? lines.slice(1) : lines
 
   let resolvedNameIdx = nameIdx
   let resolvedLinkIdx = linkIdx
+  let resolvedCategoryIdx = categoryIdx
 
   if (!hasHeader) {
-    resolvedNameIdx = 0
-    resolvedLinkIdx = kind === 'video' ? 2 : 1
+    if (kind === 'video') {
+      resolvedCategoryIdx = 0
+      resolvedNameIdx = 1
+      resolvedLinkIdx = 2
+    } else {
+      resolvedNameIdx = 0
+      resolvedLinkIdx = 1
+      resolvedCategoryIdx = -1
+    }
   }
 
   const dataRows = dataLines.map((line) => parseCsvLine(line))
-  return rowsFromTable(dataRows, resolvedNameIdx, resolvedLinkIdx, kind)
+  return rowsFromTable(
+    dataRows,
+    resolvedNameIdx,
+    resolvedLinkIdx,
+    kind,
+    resolvedCategoryIdx,
+  )
 }
 
 export async function parseBulkFile(file: File, kind: BulkSheetKind = 'tour'): Promise<BulkRow[]> {
@@ -147,15 +172,23 @@ export async function parseBulkFile(file: File, kind: BulkSheetKind = 'tour'): P
     if (matrix.length === 0) throw new Error('Sheet is empty')
 
     const headerRow = matrix[0].map((c) => String(c))
-    const { hasHeader, nameIdx, linkIdx } = resolveColumns(headerRow)
+    const { hasHeader, nameIdx, linkIdx, categoryIdx } = resolveColumns(headerRow)
     const dataRows = hasHeader ? matrix.slice(1) : matrix
 
     let resolvedNameIdx = nameIdx
     let resolvedLinkIdx = linkIdx
+    let resolvedCategoryIdx = categoryIdx
 
     if (!hasHeader) {
-      resolvedNameIdx = 0
-      resolvedLinkIdx = kind === 'video' ? 2 : 1
+      if (kind === 'video') {
+        resolvedCategoryIdx = 0
+        resolvedNameIdx = 1
+        resolvedLinkIdx = 2
+      } else {
+        resolvedNameIdx = 0
+        resolvedLinkIdx = 1
+        resolvedCategoryIdx = -1
+      }
     }
 
     return rowsFromTable(
@@ -163,6 +196,7 @@ export async function parseBulkFile(file: File, kind: BulkSheetKind = 'tour'): P
       resolvedNameIdx,
       resolvedLinkIdx,
       kind,
+      resolvedCategoryIdx,
     )
   }
 

@@ -84,11 +84,11 @@ export function PortfolioCard({
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_110%,rgba(41,171,226,0.28),transparent_62%)]" />
 
             <div className="relative z-10 flex h-full flex-col items-center justify-center px-3 py-3 text-center sm:px-4">
-              {/* {entry.city && entry.city !== 'Unknown' && (
+              {isVideo && entry.category && (
                 <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.32em] text-cyan-bright/90 sm:text-xs">
-                  {entry.city}
+                  {entry.category}
                 </p>
-              )} */}
+              )}
 
               <h3 className="font-display line-clamp-3 max-w-[96%] text-lg font-extrabold leading-[1.15] tracking-[-0.02em] text-balance sm:text-xl md:text-2xl">
                 <span className="bg-gradient-to-b from-white via-white to-cyan-bright/90 bg-clip-text text-transparent">

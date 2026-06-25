@@ -8,6 +8,7 @@ export interface PortfolioEntry {
   thumbnail?: string | null
   city?: string | null
   mediaType: PortfolioMediaType
+  category?: string | null
 }
 
 export interface PortfolioPage {
@@ -18,6 +19,8 @@ export interface PortfolioPage {
   hasMore: boolean
   /** City slug/name → count for filter pills (computed server-side at scale) */
   cityCounts: Record<string, number>
+  /** Video category → count (videos only) */
+  categoryCounts: Record<string, number>
 }
 
 export interface PortfolioQuery {
@@ -25,4 +28,5 @@ export interface PortfolioQuery {
   pageSize: number
   city?: string
   mediaType?: PortfolioMediaType | 'all'
+  category?: string
 }

@@ -54,8 +54,8 @@ const PANEL_COPY: Record<
   },
   video: {
     sheetHint:
-      'For each sheet: choose a location, then attach your YouTube CSV (Title + Youtube Link).',
-    fileHint: 'Title + Youtube Link columns',
+      'For each sheet: choose a location, then attach your YouTube CSV (Category + Title + Youtube Link).',
+    fileHint: 'Category + Title + Youtube Link columns',
     thumbNote: 'Thumbnails: plays video, fullscreen, waits 10s, captures frame.',
   },
 }
@@ -201,6 +201,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
   const total = showJob ? job.total : totalRows
   const log = showJob ? job.log : []
   const summary = showJob ? job.summary : null
+  const warning = showJob ? job.warning : null
   const fatalError = showJob ? job.fatalError : null
   const pct = total > 0 ? Math.min(100, Math.round((progress / total) * 100)) : 0
   const filledSlots = batches.filter((b) => b.fileName).length
@@ -215,6 +216,12 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
             Playwright can capture thumbnails locally.
           </p>
         </div>
+      )}
+
+      {warning && (
+        <p className="mb-6 text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          {warning}
+        </p>
       )}
 
       {fatalError && (

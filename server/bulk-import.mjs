@@ -83,6 +83,28 @@ async function captureThumbnail(page, link, mediaType) {
   return screenshotTourToBuffer(page, link)
 }
 
+async function detectCategoryColumn(adminClient) {
+  const { error } = await adminClient.from('portfolio_items').select('category').limit(1)
+  if (!error) return true
+  const msg = error.message?.toLowerCase() ?? ''
+  return !(msg.includes('category') && msg.includes('column'))
+}
+
+function friendlySaveError(message) {
+  if (message?.includes("'category' column")) {
+    return (
+      'Missing category column in database. Open Supabase → SQL Editor, run ' +
+      'supabase/migrations/002_portfolio_category.sql, then retry import.'
+    )
+  }
+  return message
+}
+
+function withCategory(fields, category, categorySupported) {
+  if (!categorySupported) return fields
+  return { ...fields, category }
+}
+
 async function processBulkImport(req, res) {
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     sendJson(res, 503, {
@@ -131,12 +153,25 @@ async function processBulkImport(req, res) {
   })
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
+  const categorySupported = await detectCategoryColumn(adminClient)
+  const existingSelect = categorySupported
+    ? 'id, name, media_type, category'
+    : 'id, name, media_type'
+
   let sortOrder = await getNextSortOrder(adminClient)
   let success = 0
   let failed = 0
   let skipped = 0
 
   sendSse(res, 'start', { total: rows.length })
+
+  if (!categorySupported && rows.some((r) => r.category?.trim())) {
+    sendSse(res, 'warn', {
+      message:
+        'Category column not in database yet — importing without categories. ' +
+        'Run supabase/migrations/002_portfolio_category.sql in Supabase SQL Editor.',
+    })
+  }
 
   let browser
   let page
@@ -155,6 +190,7 @@ async function processBulkImport(req, res) {
       const row = rows[i]
       const link = row.link?.trim()
       const name = row.name?.trim()
+      const category = row.category?.trim() || null
 
       if (!link?.startsWith('http')) {
         failed++
@@ -181,15 +217,23 @@ async function processBulkImport(req, res) {
 
       const { data: existingByLink } = await adminClient
         .from('portfolio_items')
-        .select('id, name, media_type')
+        .select(existingSelect)
         .eq('link', link)
         .maybeSingle()
 
       if (existingByLink && skipExisting) {
+        const patch = {}
         if (existingByLink.media_type !== resolvedMediaType) {
+          patch.media_type = resolvedMediaType
+        }
+        if (categorySupported && category && category !== existingByLink.category) {
+          patch.category = category
+        }
+
+        if (Object.keys(patch).length > 0) {
           const { error: fixError } = await adminClient
             .from('portfolio_items')
-            .update({ media_type: resolvedMediaType })
+            .update(patch)
             .eq('id', existingByLink.id)
           if (fixError) {
             failed++
@@ -198,17 +242,22 @@ async function processBulkImport(req, res) {
               total: rows.length,
               name: displayName,
               status: 'error',
-              message: fixError.message,
+              message: friendlySaveError(fixError.message),
             })
             continue
           }
           success++
+          const notes = []
+          if (patch.media_type) {
+            notes.push(`type → ${resolvedMediaType === 'video' ? 'Video' : 'VR'}`)
+          }
+          if (patch.category) notes.push(`category → ${category}`)
           sendSse(res, 'item', {
             index: i + 1,
             total: rows.length,
             name: displayName,
             status: 'done',
-            message: `Fixed media type → ${resolvedMediaType === 'video' ? 'Video' : 'VR'}`,
+            message: `Updated ${notes.join(', ')}`,
             id: existingByLink.id,
           })
           continue
@@ -272,25 +321,37 @@ async function processBulkImport(req, res) {
         if (existingByLink) {
           const { error } = await adminClient
             .from('portfolio_items')
-            .update({
-              name: displayName,
-              thumbnail_path: thumbnailPath,
-              city_id: cityId,
-              media_type: resolvedMediaType,
-            })
+            .update(
+              withCategory(
+                {
+                  name: displayName,
+                  thumbnail_path: thumbnailPath,
+                  city_id: cityId,
+                  media_type: resolvedMediaType,
+                },
+                category,
+                categorySupported,
+              ),
+            )
             .eq('id', tourId)
           if (error) throw new Error(error.message)
         } else {
-          const { error } = await adminClient.from('portfolio_items').insert({
-            id: tourId,
-            name: displayName,
-            link,
-            thumbnail_path: thumbnailPath,
-            city_id: cityId,
-            media_type: resolvedMediaType,
-            is_published: true,
-            sort_order: sortOrder++,
-          })
+          const { error } = await adminClient.from('portfolio_items').insert(
+            withCategory(
+              {
+                id: tourId,
+                name: displayName,
+                link,
+                thumbnail_path: thumbnailPath,
+                city_id: cityId,
+                media_type: resolvedMediaType,
+                is_published: true,
+                sort_order: sortOrder++,
+              },
+              category,
+              categorySupported,
+            ),
+          )
           if (error) throw new Error(error.message)
         }
 
@@ -309,7 +370,7 @@ async function processBulkImport(req, res) {
           total: rows.length,
           name: displayName,
           status: 'error',
-          message: `Save failed: ${err.message}`,
+          message: `Save failed: ${friendlySaveError(err.message)}`,
           id: tourId,
         })
       }

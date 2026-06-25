@@ -297,6 +297,7 @@ export async function duplicateTour(id: string): Promise<string> {
     thumbnail_path: thumbnailPath,
     city_id: tour.city_id,
     media_type: tour.media_type,
+    category: tour.category,
     is_published: false,
     sort_order: (last?.sort_order ?? 0) + 1,
   })

@@ -30,6 +30,7 @@ const emptyForm: TourFormValues = {
   link: '',
   city_id: '',
   media_type: 'virtual-tour',
+  category: '',
   is_published: true,
   sort_order: 0,
 }
@@ -118,6 +119,7 @@ export function TourFormPage() {
           link: tour.link,
           city_id: tour.city_id ?? '',
           media_type: inferMediaTypeFromLink(link),
+          category: tour.category ?? '',
           is_published: tour.is_published,
           sort_order: tour.sort_order,
         }
@@ -176,6 +178,7 @@ export function TourFormPage() {
         link: form.link.trim(),
         city_id: form.city_id || null,
         media_type: form.media_type,
+        category: form.media_type === 'video' ? form.category.trim() || null : null,
         is_published: form.is_published,
         sort_order: form.sort_order,
         thumbnail_path: thumbnailPath,
@@ -342,6 +345,7 @@ export function TourFormPage() {
                     setForm((f) => ({
                       ...f,
                       media_type: e.target.value as TourFormValues['media_type'],
+                      category: e.target.value === 'video' ? f.category : '',
                     }))
                   }
                   className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
@@ -353,6 +357,20 @@ export function TourFormPage() {
                   YouTube links are auto-set to Video.
                 </p>
               </div>
+
+              {form.media_type === 'video' && (
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
+                    Category
+                  </label>
+                  <input
+                    value={form.category}
+                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                    className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
+                    placeholder="e.g. Route Video, Construction Update"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-6 pt-2">

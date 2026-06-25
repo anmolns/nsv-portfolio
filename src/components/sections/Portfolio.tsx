@@ -6,16 +6,56 @@ import { PortfolioCard } from '../ui/PortfolioCard'
 import { PortfolioVideoModal } from '../ui/PortfolioVideoModal'
 import { openPortfolioEntry } from '../../lib/openPortfolioLink'
 
+function FilterPill({
+  label,
+  count,
+  isActive,
+  disabled,
+  onClick,
+}: {
+  label: string
+  count: number
+  isActive: boolean
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={isActive}
+      disabled={disabled}
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-[10px] tracking-[0.08em] uppercase font-semibold transition-all duration-300 border ${
+        isActive
+          ? 'bg-navy text-white border-navy shadow-sm shadow-navy/20'
+          : 'bg-white text-slate border-border hover:border-cyan hover:text-cyan'
+      }`}
+      data-cursor="pointer"
+    >
+      {label}
+      <span className={`ml-1 ${isActive ? 'text-cyan' : 'opacity-50'}`}>({count})</span>
+    </button>
+  )
+}
+
 export function Portfolio() {
   const [activeCity, setActiveCity] = useState<string>('All')
+  const [activeCategory, setActiveCategory] = useState<string>('All')
   const [mediaFilter, setMediaFilter] = useState<PortfolioMediaType | 'all'>(() =>
     parseMediaFilter(window.location.hash),
   )
   const [videoEntry, setVideoEntry] = useState<PortfolioEntry | null>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  const { items, cityCounts, total, hasMore, loading, loadingMore, error, loadMore, retry } =
-    usePortfolio({ city: activeCity, mediaType: mediaFilter })
+  const showCategoryFilter = mediaFilter === 'video'
+
+  const { items, cityCounts, categoryCounts, total, hasMore, loading, loadingMore, error, loadMore, retry } =
+    usePortfolio({
+      city: activeCity,
+      mediaType: mediaFilter,
+      category: showCategoryFilter ? activeCategory : undefined,
+    })
 
   useEffect(() => {
     const onHashChange = () => setMediaFilter(parseMediaFilter(window.location.hash))
@@ -30,6 +70,10 @@ export function Portfolio() {
       window.removeEventListener('portfolio-filter', onFilter)
     }
   }, [])
+
+  useEffect(() => {
+    if (!showCategoryFilter) setActiveCategory('All')
+  }, [showCategoryFilter])
 
   useEffect(() => {
     const sentinel = loadMoreRef.current
@@ -56,10 +100,25 @@ export function Portfolio() {
     return cityCounts[city] ?? 0
   }
 
+  const getCategoryCount = (category: string) => {
+    if (category === 'All') return total
+    return categoryCounts[category] ?? 0
+  }
+
   const filterCities = useMemo(
     () => Object.keys(cityCounts).sort((a, b) => a.localeCompare(b)),
     [cityCounts],
   )
+
+  const filterCategories = useMemo(
+    () => Object.keys(categoryCounts).sort((a, b) => a.localeCompare(b)),
+    [categoryCounts],
+  )
+
+  const emptyMessage =
+    showCategoryFilter && activeCategory !== 'All'
+      ? 'No videos in this category yet.'
+      : 'No projects in this city yet.'
 
   return (
     <>
@@ -70,36 +129,44 @@ export function Portfolio() {
       >
         <div className="w-full px-5 sm:px-8 lg:px-10 xl:px-14">
           <div
-            className="flex flex-wrap gap-1.5 mb-6 lg:mb-8"
+            className="flex flex-wrap gap-1.5 mb-4 lg:mb-5"
             role="tablist"
             aria-label="Filter by city"
           >
-            {(['All', ...filterCities] as const).map((city) => {
-              const isActive = activeCity === city
-              const count = getCityCount(city)
-
-              return (
-                <button
-                  key={city}
-                  role="tab"
-                  aria-selected={isActive}
-                  disabled={loading && isActive}
-                  onClick={() => setActiveCity(city)}
-                  className={`px-3 py-1.5 rounded-full text-[10px] tracking-[0.08em] uppercase font-semibold transition-all duration-300 border ${
-                    isActive
-                      ? 'bg-navy text-white border-navy shadow-sm shadow-navy/20'
-                      : 'bg-white text-slate border-border hover:border-cyan hover:text-cyan'
-                  }`}
-                  data-cursor="pointer"
-                >
-                  {city}
-                  <span className={`ml-1 ${isActive ? 'text-cyan' : 'opacity-50'}`}>
-                    ({count})
-                  </span>
-                </button>
-              )
-            })}
+            {(['All', ...filterCities] as const).map((city) => (
+              <FilterPill
+                key={city}
+                label={city}
+                count={getCityCount(city)}
+                isActive={activeCity === city}
+                disabled={loading && activeCity === city}
+                onClick={() => setActiveCity(city)}
+              />
+            ))}
           </div>
+
+          {showCategoryFilter && filterCategories.length > 0 && (
+            <div
+              className="flex flex-wrap gap-1.5 mb-6 lg:mb-8"
+              role="tablist"
+              aria-label="Filter videos by category"
+            >
+              {(['All', ...filterCategories] as const).map((category) => (
+                <FilterPill
+                  key={category}
+                  label={category}
+                  count={getCategoryCount(category)}
+                  isActive={activeCategory === category}
+                  disabled={loading && activeCategory === category}
+                  onClick={() => setActiveCategory(category)}
+                />
+              ))}
+            </div>
+          )}
+
+          {(!showCategoryFilter || filterCategories.length === 0) && (
+            <div className="mb-2 lg:mb-3" aria-hidden />
+          )}
 
           {error && (
             <div className="mb-6 flex flex-wrap items-center gap-3 text-sm text-slate">
@@ -126,7 +193,7 @@ export function Portfolio() {
               ))}
             </div>
           ) : items.length === 0 ? (
-            <p className="text-center text-slate py-12 text-sm">No projects in this city yet.</p>
+            <p className="text-center text-slate py-12 text-sm">{emptyMessage}</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 lg:gap-4">
               {items.map((entry) => (
