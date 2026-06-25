@@ -1,8 +1,7 @@
-/** Open in the on-page viewer modal (same tab — no new window). */
-export function openPortfolioEntry(entry: {
-  link: string
-  mediaType: 'video' | 'virtual-tour'
-}): 'modal' | 'missing' {
-  if (!entry.link?.trim()) return 'missing'
-  return 'modal'
+/** Navigate to the portfolio link in the same tab. */
+export function openPortfolioEntry(entry: { link: string }): 'opened' | 'missing' {
+  const url = entry.link?.trim()
+  if (!url) return 'missing'
+  window.location.assign(url)
+  return 'opened'
 }

@@ -4,11 +4,9 @@ import { usePortfolio } from '../../hooks/usePortfolio'
 import { parseMediaFilter } from '../../lib/portfolioNav'
 import type { PortfolioEntry, PortfolioMediaType } from '../../types/portfolio'
 import { PortfolioCard } from '../ui/PortfolioCard'
-import { PortfolioVideoModal } from '../ui/PortfolioVideoModal'
 import { openPortfolioEntry } from '../../lib/openPortfolioLink'
 
-const CARD_GRID =
-  'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-5 xl:gap-6'
+const CARD_GRID = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6'
 
 const selectClass =
   'w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 disabled:opacity-60'
@@ -33,7 +31,7 @@ function FilterPill({
       aria-selected={isActive}
       disabled={disabled}
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-full text-[10px] tracking-[0.08em] uppercase font-semibold transition-all duration-300 border ${
+      className={`px-4 py-2 rounded-full text-[11px] sm:text-xs tracking-[0.08em] uppercase font-semibold transition-all duration-300 border ${
         isActive
           ? 'bg-navy text-white border-navy shadow-sm shadow-navy/20'
           : 'bg-white text-slate border-border hover:border-cyan hover:text-cyan'
@@ -88,7 +86,6 @@ export function Portfolio() {
   )
   const [activeCity, setActiveCity] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [videoEntry, setVideoEntry] = useState<PortfolioEntry | null>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   const { items, cityCounts, categoryCounts, hasMore, loading, loadingMore, error, loadMore, retry } =
@@ -96,6 +93,7 @@ export function Portfolio() {
       city: activeCity,
       mediaType: mediaFilter,
       category: activeCategory,
+      requireCity: true,
     })
 
   useEffect(() => {
@@ -112,13 +110,24 @@ export function Portfolio() {
   }, [])
 
   useEffect(() => {
-    setActiveCity(null)
     setActiveCategory(null)
+    setActiveCity(null)
   }, [mediaFilter])
+
+  const filterCities = useMemo(
+    () => Object.keys(cityCounts).sort((a, b) => a.localeCompare(b)),
+    [cityCounts],
+  )
+
+  useEffect(() => {
+    if (filterCities.length > 0 && !activeCity) {
+      setActiveCity(filterCities[0])
+    }
+  }, [activeCity, filterCities])
 
   useEffect(() => {
     const sentinel = loadMoreRef.current
-    if (!sentinel || !hasMore || loading || loadingMore) return
+    if (!sentinel || !activeCity || !hasMore || loading || loadingMore) return
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -129,16 +138,11 @@ export function Portfolio() {
 
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [hasMore, loading, loadingMore, loadMore, items.length])
+  }, [activeCity, hasMore, loading, loadingMore, loadMore, items.length])
 
   const handleOpen = (entry: PortfolioEntry) => {
-    if (openPortfolioEntry(entry) === 'modal') setVideoEntry(entry)
+    openPortfolioEntry(entry)
   }
-
-  const filterCities = useMemo(
-    () => Object.keys(cityCounts).sort((a, b) => a.localeCompare(b)),
-    [cityCounts],
-  )
 
   const filterCategories = useMemo(
     () =>
@@ -159,14 +163,14 @@ export function Portfolio() {
     [categoryCounts, filterCategories],
   )
 
-  const showCategoryFilter = mediaFilter === 'video' && filterCategories.length > 0
+  const showCategoryFilter =
+    activeCity && mediaFilter === 'video' && filterCategories.length > 0
 
-  const emptyMessage =
-    activeCategory || activeCity
-      ? 'No projects match your filters.'
-      : mediaFilter === 'video'
-        ? 'No videos yet.'
-        : 'No virtual tours yet.'
+  const emptyMessage = activeCategory
+    ? 'No videos match this category.'
+    : mediaFilter === 'video'
+      ? 'No videos in this city yet.'
+      : 'No virtual tours in this city yet.'
 
   return (
     <>
@@ -179,7 +183,7 @@ export function Portfolio() {
           {filterCities.length > 0 && (
             <div className="mb-6 lg:mb-8 space-y-4">
               <div
-                className="flex flex-wrap gap-1.5"
+                className="flex flex-wrap gap-2"
                 role="tablist"
                 aria-label="Filter by city"
               >
@@ -190,7 +194,7 @@ export function Portfolio() {
                     count={cityCounts[city] ?? 0}
                     isActive={activeCity === city}
                     disabled={loading && activeCity === city}
-                    onClick={() => setActiveCity(activeCity === city ? null : city)}
+                    onClick={() => setActiveCity(city)}
                   />
                 ))}
               </div>
@@ -223,7 +227,7 @@ export function Portfolio() {
 
           {loading && items.length === 0 ? (
             <div className={CARD_GRID}>
-              {Array.from({ length: 10 }).map((_, i) => (
+              {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
                   className="aspect-[4/3] rounded-xl bg-navy/5 animate-pulse"
@@ -248,8 +252,6 @@ export function Portfolio() {
           )}
         </div>
       </section>
-
-      <PortfolioVideoModal entry={videoEntry} onClose={() => setVideoEntry(null)} />
     </>
   )
 }
