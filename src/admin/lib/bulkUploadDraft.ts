@@ -25,10 +25,18 @@ function isBulkBatch(value: unknown): value is BulkBatch {
   return (
     typeof batch.id === 'string' &&
     (batch.fileName === null || typeof batch.fileName === 'string') &&
+    (batch.stateId === undefined || typeof batch.stateId === 'string') &&
     typeof batch.cityId === 'string' &&
     Array.isArray(batch.rows) &&
     batch.rows.every(isBulkRow)
   )
+}
+
+function normalizeBulkBatch(batch: BulkBatch): BulkBatch {
+  return {
+    ...batch,
+    stateId: batch.stateId ?? '',
+  }
 }
 
 export function readBulkUploadDraft(kind: BulkUploadKind): BulkUploadDraft | null {
@@ -42,7 +50,7 @@ export function readBulkUploadDraft(kind: BulkUploadKind): BulkUploadDraft | nul
     }
 
     return {
-      batches: parsed.batches,
+      batches: parsed.batches.map(normalizeBulkBatch),
       skipExisting: parsed.skipExisting ?? true,
     }
   } catch {

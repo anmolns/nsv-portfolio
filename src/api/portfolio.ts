@@ -1,17 +1,41 @@
 import { metroCities } from '../data/metroCities'
+import { METRO_CITY_STATES } from '../data/indianStates'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { fetchPortfolioPageFromSupabase } from './portfolio.supabase'
 import type { PortfolioPage, PortfolioQuery } from '../types/portfolio'
 
-export const PORTFOLIO_PAGE_SIZE = 48
+export const PORTFOLIO_PAGE_SIZE = 15
 
 function emptyCityCounts(): Record<string, number> {
   return Object.fromEntries(metroCities.map((city) => [city, 0]))
 }
 
+function emptyCityStates(): Record<string, string> {
+  return Object.fromEntries(
+    metroCities.map((city) => [city, METRO_CITY_STATES[city] ?? '']),
+  )
+}
+
+function emptyStateCounts(): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const city of metroCities) {
+    const state = METRO_CITY_STATES[city]
+    if (state) counts[state] = counts[state] ?? 0
+  }
+  return counts
+}
+
 /** Empty portfolio when Supabase is not configured yet */
 async function fetchPortfolioPageEmpty(query: PortfolioQuery): Promise<PortfolioPage> {
   await new Promise((r) => setTimeout(r, 80))
+
+  const cityStates = emptyCityStates()
+  const allCityCounts = emptyCityCounts()
+  const cityCounts = query.state
+    ? Object.fromEntries(
+        Object.entries(allCityCounts).filter(([city]) => cityStates[city] === query.state),
+      )
+    : allCityCounts
 
   return {
     items: [],
@@ -19,8 +43,10 @@ async function fetchPortfolioPageEmpty(query: PortfolioQuery): Promise<Portfolio
     page: query.page,
     pageSize: query.pageSize,
     hasMore: false,
-    cityCounts: emptyCityCounts(),
+    cityCounts,
     categoryCounts: {},
+    stateCounts: emptyStateCounts(),
+    cityStates,
   }
 }
 

@@ -12,7 +12,7 @@ export async function fetchAdminCities(): Promise<CityRow[]> {
   const supabase = getSupabase()
   const { data, error } = await supabase
     .from('cities')
-    .select('id, name, sort_order, is_active')
+    .select('id, name, state, sort_order, is_active')
     .eq('is_active', true)
     .order('name')
 
@@ -33,7 +33,7 @@ async function findCityByName(name: string): Promise<CityRow | null> {
     if (!candidate) continue
     const { data, error } = await supabase
       .from('cities')
-      .select('id, name, sort_order, is_active')
+      .select('id, name, state, sort_order, is_active')
       .ilike('name', candidate)
       .maybeSingle()
 
@@ -44,10 +44,12 @@ async function findCityByName(name: string): Promise<CityRow | null> {
   return null
 }
 
-export async function createCity(name: string): Promise<CityRow> {
+export async function createCity(name: string, state: string): Promise<CityRow> {
   const supabase = getSupabase()
   const trimmed = name.trim()
+  const trimmedState = state.trim()
   if (!trimmed) throw new Error('City name is required')
+  if (!trimmedState) throw new Error('State is required')
 
   const displayName = canonicalCityName(trimmed)
   const existing = await findCityByName(displayName)
@@ -66,14 +68,24 @@ export async function createCity(name: string): Promise<CityRow> {
     .from('cities')
     .insert({
       name: displayName,
+      state: trimmedState,
       sort_order: (lastCity?.sort_order ?? 0) + 1,
       is_active: true,
     })
-    .select('id, name, sort_order, is_active')
+    .select('id, name, state, sort_order, is_active')
     .single()
 
   if (error) throw new Error(error.message)
   return data as CityRow
+}
+
+export async function updateCityState(id: string, state: string): Promise<void> {
+  const supabase = getSupabase()
+  const trimmedState = state.trim()
+  if (!trimmedState) throw new Error('State is required')
+
+  const { error } = await supabase.from('cities').update({ state: trimmedState }).eq('id', id)
+  if (error) throw new Error(error.message)
 }
 
 export async function fetchAdminTours(): Promise<PortfolioItemRow[]> {
@@ -180,7 +192,7 @@ export async function fetchAllAdminCities(): Promise<CityWithCount[]> {
     await Promise.all([
       supabase
         .from('cities')
-        .select('id, name, sort_order, is_active')
+        .select('id, name, state, sort_order, is_active')
         .order('sort_order')
         .order('name'),
       supabase.from('portfolio_items').select('city_id'),

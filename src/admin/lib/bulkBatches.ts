@@ -3,6 +3,7 @@ import type { BulkRow } from './parseBulkSheet'
 export interface BulkBatch {
   id: string
   fileName: string | null
+  stateId: string
   cityId: string
   rows: BulkRow[]
 }
@@ -11,6 +12,7 @@ export function createEmptyBatch(): BulkBatch {
   return {
     id: crypto.randomUUID(),
     fileName: null,
+    stateId: '',
     cityId: '',
     rows: [],
   }

@@ -15,6 +15,7 @@ import {
 } from '../api/adminPortfolio'
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
 import { CityPicker } from '../components/CityPicker'
+import { INDIAN_STATES } from '../../data/indianStates'
 import {
   clearTourFormDraft,
   getTourFormDraftKey,
@@ -48,6 +49,7 @@ export function TourFormPage() {
     return readTourFormDraft(draftKey) ?? emptyForm
   })
   const [cities, setCities] = useState<CityRow[]>([])
+  const [selectedState, setSelectedState] = useState('')
   const [thumbFile, setThumbFile] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(null)
   const [existingThumb, setExistingThumb] = useState<string | null>(null)
@@ -67,6 +69,12 @@ export function TourFormPage() {
       .then(setCities)
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load cities'))
   }, [])
+
+  useEffect(() => {
+    if (selectedState || !form.city_id) return
+    const city = cities.find((c) => c.id === form.city_id)
+    if (city?.state) setSelectedState(city.state)
+  }, [cities, form.city_id, selectedState])
 
   useEffect(() => {
     if (skipNextSave.current) {
@@ -328,11 +336,35 @@ export function TourFormPage() {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
+                  State
+                </label>
+                <select
+                  value={selectedState}
+                  onChange={(e) => {
+                    const nextState = e.target.value
+                    setSelectedState(nextState)
+                    setForm((f) => ({ ...f, city_id: '' }))
+                  }}
+                  className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
+                >
+                  <option value="">Select state…</option>
+                  {INDIAN_STATES.map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <CityPicker
                 cities={cities}
                 value={form.city_id}
                 onChange={(cityId) => setForm((f) => ({ ...f, city_id: cityId }))}
                 onCitiesChange={setCities}
+                stateFilter={selectedState || null}
+                createState={selectedState || null}
               />
 
               <div>

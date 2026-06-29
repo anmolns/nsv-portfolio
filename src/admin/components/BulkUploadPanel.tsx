@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { fetchAdminCities } from '../api/adminPortfolio'
 import { CityPicker } from '../components/CityPicker'
 import { AdminCard } from '../components/AdminLayout'
+import { INDIAN_STATES } from '../../data/indianStates'
 import { useAdminAuthContext } from '../context/AdminAuthContext'
 import { useBulkImportContext } from '../context/BulkImportContext'
 import {
@@ -288,6 +289,27 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
+                      State
+                    </label>
+                    <select
+                      value={batch.stateId}
+                      disabled={isImporting || loadingCities}
+                      onChange={(e) =>
+                        updateBatch(batch.id, { stateId: e.target.value, cityId: '' })
+                      }
+                      className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 disabled:opacity-60"
+                    >
+                      <option value="">Select state…</option>
+                      {INDIAN_STATES.map((state) => (
+                        <option key={state} value={state}>
+                          {state}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <CityPicker
                     label="Location"
                     cities={cities}
@@ -295,6 +317,8 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                     disabled={isImporting || loadingCities}
                     onChange={(cityId) => updateBatch(batch.id, { cityId })}
                     onCitiesChange={setCities}
+                    stateFilter={batch.stateId || null}
+                    createState={batch.stateId || null}
                   />
 
                   <div>

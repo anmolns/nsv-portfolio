@@ -7,8 +7,10 @@ import {
   fetchAllAdminCities,
   mergeCities,
   setCityActive,
+  updateCityState,
 } from '../api/adminPortfolio'
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
+import { INDIAN_STATES } from '../../data/indianStates'
 import type { CityWithCount } from '../types'
 
 export function CitiesPage() {
@@ -16,6 +18,7 @@ export function CitiesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
+  const [newState, setNewState] = useState('')
   const [adding, setAdding] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [mergeSourceId, setMergeSourceId] = useState<string | null>(null)
@@ -36,18 +39,36 @@ export function CitiesPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
     const name = newName.trim()
-    if (!name || adding) return
+    const state = newState.trim()
+    if (!name || !state || adding) return
 
     setAdding(true)
     setError(null)
     try {
-      await createCity(name)
+      await createCity(name, state)
       setNewName('')
+      setNewState('')
       load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add city')
     } finally {
       setAdding(false)
+    }
+  }
+
+  const handleStateChange = async (city: CityWithCount, state: string) => {
+    if (!state || state === city.state) return
+
+    setBusyId(city.id)
+    try {
+      await updateCityState(city.id, state)
+      setCities((prev) =>
+        prev.map((c) => (c.id === city.id ? { ...c, state } : c)),
+      )
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Update failed')
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -133,16 +154,28 @@ export function CitiesPage() {
       )}
 
       <AdminCard className="p-6 mb-6">
-        <form onSubmit={handleAdd} className="flex flex-wrap gap-3">
+        <form onSubmit={handleAdd} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="New city name…"
-            className="flex-1 min-w-[200px] rounded-xl border border-border bg-off-white px-4 py-3 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
+            className="rounded-xl border border-border bg-off-white px-4 py-3 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
           />
+          <select
+            value={newState}
+            onChange={(e) => setNewState(e.target.value)}
+            className="rounded-xl border border-border bg-off-white px-4 py-3 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
+          >
+            <option value="">Select state…</option>
+            {INDIAN_STATES.map((state) => (
+              <option key={state} value={state}>
+                {state}
+              </option>
+            ))}
+          </select>
           <button
             type="submit"
-            disabled={adding || !newName.trim()}
+            disabled={adding || !newName.trim() || !newState}
             className="rounded-full bg-cyan px-6 py-3 text-sm font-bold text-navy hover:bg-cyan-bright transition-colors disabled:opacity-60"
           >
             {adding ? 'Adding…' : 'Add city'}
@@ -160,6 +193,9 @@ export function CitiesPage() {
                 <tr className="border-b border-border bg-off-white/80">
                   <th className="px-5 py-4 text-[10px] uppercase tracking-wider font-semibold text-slate">
                     City
+                  </th>
+                  <th className="px-5 py-4 text-[10px] uppercase tracking-wider font-semibold text-slate">
+                    State
                   </th>
                   <th className="px-5 py-4 text-[10px] uppercase tracking-wider font-semibold text-slate">
                     Tours
@@ -182,6 +218,21 @@ export function CitiesPage() {
                     className="border-b border-border last:border-0"
                   >
                     <td className="px-5 py-4 font-semibold text-navy">{city.name}</td>
+                    <td className="px-5 py-4">
+                      <select
+                        value={city.state ?? ''}
+                        disabled={busyId === city.id}
+                        onChange={(e) => handleStateChange(city, e.target.value)}
+                        className="rounded-lg border border-border bg-off-white px-2 py-1.5 text-xs text-navy min-w-[160px]"
+                      >
+                        <option value="">No state</option>
+                        {INDIAN_STATES.map((state) => (
+                          <option key={state} value={state}>
+                            {state}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="px-5 py-4 text-slate">{city.tour_count}</td>
                     <td className="px-5 py-4">
                       <span

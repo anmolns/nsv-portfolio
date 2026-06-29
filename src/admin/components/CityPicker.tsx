@@ -12,6 +12,10 @@ interface CityPickerProps {
   onCitiesChange: (cities: CityRow[]) => void
   disabled?: boolean
   label?: string
+  /** When set, only cities in this state appear in the list */
+  stateFilter?: string | null
+  /** State assigned when creating a new city inline */
+  createState?: string | null
 }
 
 export function CityPicker({
@@ -21,6 +25,8 @@ export function CityPicker({
   onCitiesChange,
   disabled,
   label = 'City',
+  stateFilter,
+  createState,
 }: CityPickerProps) {
   const listId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
@@ -28,6 +34,11 @@ export function CityPicker({
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
+
+  const scopedCities = useMemo(() => {
+    if (!stateFilter) return cities
+    return cities.filter((city) => city.state === stateFilter)
+  }, [cities, stateFilter])
 
   const selectedCity = cities.find((c) => c.id === value)
 
@@ -51,19 +62,19 @@ export function CityPicker({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return cities
-    return cities.filter((c) => c.name.toLowerCase().includes(q))
-  }, [cities, query])
+    if (!q) return scopedCities
+    return scopedCities.filter((c) => c.name.toLowerCase().includes(q))
+  }, [scopedCities, query])
 
   const canCreate = useMemo(() => {
     const q = query.trim()
-    if (!q) return false
+    if (!q || !createState) return false
     const canonical = canonicalCityName(q).toLowerCase()
     return !cities.some(
       (c) =>
         c.name.toLowerCase() === q.toLowerCase() || c.name.toLowerCase() === canonical,
     )
-  }, [cities, query])
+  }, [cities, createState, query])
 
   const handleSelect = (city: CityRow) => {
     onChange(city.id)
@@ -74,13 +85,13 @@ export function CityPicker({
 
   const handleCreate = async () => {
     const name = query.trim()
-    if (!name || creating) return
+    if (!name || creating || !createState) return
 
     setCreating(true)
     setLocalError(null)
 
     try {
-      const city = await createCity(name)
+      const city = await createCity(name, createState)
       const next = [...cities, city].sort((a, b) => a.name.localeCompare(b.name))
       onCitiesChange(next)
       handleSelect(city)
@@ -108,7 +119,7 @@ export function CityPicker({
           aria-controls={`${listId}-listbox`}
           autoComplete="off"
           value={query}
-          disabled={disabled}
+          disabled={disabled || (Boolean(stateFilter) && !createState)}
           onChange={(e) => {
             if (disabled) return
             setQuery(e.target.value)
@@ -118,18 +129,25 @@ export function CityPicker({
           onFocus={() => {
             if (!disabled) setOpen(true)
           }}
-          placeholder="Search or add city…"
-          className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy placeholder:text-slate-light focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
+          placeholder={
+            stateFilter && !createState
+              ? 'Select a state first…'
+              : 'Search or add city…'
+          }
+          className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy placeholder:text-slate-light focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 disabled:opacity-60"
         />
 
         {open && !disabled && (
           <div
             id={`${listId}-listbox`}
             role="listbox"
+            data-lenis-prevent
             className="absolute top-full left-0 right-0 z-30 mt-1.5 max-h-56 overflow-y-auto hide-scrollbar rounded-xl border border-border bg-white shadow-xl shadow-navy/10 py-1"
           >
             {filtered.length === 0 && !canCreate && (
-              <p className="px-4 py-3 text-sm text-slate-light">No cities match your search.</p>
+              <p className="px-4 py-3 text-sm text-slate-light">
+                {stateFilter ? 'No cities in this state match your search.' : 'No cities match your search.'}
+              </p>
             )}
 
             {filtered.map((city) => (
@@ -146,7 +164,10 @@ export function CityPicker({
                     : 'text-slate hover:bg-off-white hover:text-navy',
                 )}
               >
-                {city.name}
+                <span>{city.name}</span>
+                {city.state && (
+                  <span className="ml-2 text-xs text-slate-light">{city.state}</span>
+                )}
               </button>
             ))}
 
@@ -157,7 +178,9 @@ export function CityPicker({
                 disabled={creating}
                 className="w-full text-left px-4 py-3 text-sm font-semibold text-cyan border-t border-border hover:bg-cyan/5 disabled:opacity-60"
               >
-                {creating ? 'Adding city…' : `+ Add "${query.trim()}" as new city`}
+                {creating
+                  ? 'Adding city…'
+                  : `+ Add "${query.trim()}" in ${createState}`}
               </button>
             )}
           </div>
@@ -165,7 +188,9 @@ export function CityPicker({
       </div>
 
       <p className="mt-2 text-xs text-slate-light">
-        Search pre-seeded cities or type a new name to add it.
+        {createState
+          ? `Search cities in ${createState} or type a new name to add it.`
+          : 'Search pre-seeded cities or type a new name to add it.'}
       </p>
 
       {localError && <p className="mt-2 text-xs text-red-600">{localError}</p>}

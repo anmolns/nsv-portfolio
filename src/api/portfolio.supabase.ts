@@ -10,6 +10,7 @@ export async function fetchPortfolioPageFromSupabase(
     p_page: query.page,
     p_page_size: query.pageSize,
     p_city: query.city || null,
+    p_state: query.state || null,
     p_media_type: query.mediaType && query.mediaType !== 'all' ? query.mediaType : null,
     p_category: query.category || null,
   })

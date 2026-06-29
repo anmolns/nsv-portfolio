@@ -1,6 +1,7 @@
 export interface CityRow {
   id: string
   name: string
+  state: string | null
   sort_order: number
   is_active: boolean
 }

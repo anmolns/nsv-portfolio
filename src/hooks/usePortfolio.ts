@@ -3,16 +3,27 @@ import { fetchPortfolioPage, PORTFOLIO_PAGE_SIZE } from '../api/portfolio'
 import type { PortfolioEntry, PortfolioMediaType } from '../types/portfolio'
 
 interface UsePortfolioOptions {
+  state: string | null
   city: string | null
   mediaType: PortfolioMediaType
   category: string | null
-  /** When true, items load only after a city is selected (counts still load upfront). */
-  requireCity?: boolean
 }
 
-export function usePortfolio({ city, mediaType, category, requireCity = false }: UsePortfolioOptions) {
+function toErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    if (err.message === 'Failed to fetch') {
+      return 'Could not reach the server. Check your connection and try again.'
+    }
+    return err.message
+  }
+  return 'Failed to load portfolio'
+}
+
+export function usePortfolio({ state, city, mediaType, category }: UsePortfolioOptions) {
   const [items, setItems] = useState<PortfolioEntry[]>([])
   const [cityCounts, setCityCounts] = useState<Record<string, number>>({})
+  const [stateCounts, setStateCounts] = useState<Record<string, number>>({})
+  const [cityStates, setCityStates] = useState<Record<string, string>>({})
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(0)
@@ -22,67 +33,42 @@ export function usePortfolio({ city, mediaType, category, requireCity = false }:
   const [error, setError] = useState<string | null>(null)
   const requestId = useRef(0)
 
-  const applyCounts = useCallback(
-    (result: Awaited<ReturnType<typeof fetchPortfolioPage>>) => {
+  const applyPageResult = useCallback(
+    (result: Awaited<ReturnType<typeof fetchPortfolioPage>>, replace: boolean) => {
+      setItems((prev) => (replace ? result.items : [...prev, ...result.items]))
       setCityCounts(result.cityCounts)
+      setStateCounts(result.stateCounts ?? {})
+      setCityStates(result.cityStates ?? {})
       setCategoryCounts(result.categoryCounts ?? {})
+      setTotal(result.total)
+      setPage(result.page)
+      setHasMore(result.hasMore)
     },
     [],
   )
 
-  const loadCountsOnly = useCallback(async () => {
-    const id = ++requestId.current
-    setLoading(true)
-    setError(null)
-    setItems([])
-    setPage(0)
-    setHasMore(false)
-    setTotal(0)
-
-    try {
-      const result = await fetchPortfolioPage({
-        page: 1,
-        pageSize: 1,
-        mediaType,
-      })
-
-      if (id !== requestId.current) return
-      applyCounts(result)
-    } catch (err) {
-      if (id !== requestId.current) return
-      setError(err instanceof Error ? err.message : 'Failed to load portfolio')
-    } finally {
-      if (id === requestId.current) setLoading(false)
-    }
-  }, [applyCounts, mediaType])
-
   const loadPage = useCallback(
     async (nextPage: number, replace: boolean) => {
-      if (requireCity && !city) return
-
       const id = ++requestId.current
       replace ? setLoading(true) : setLoadingMore(true)
-      setError(null)
+      if (replace) setError(null)
 
       try {
         const result = await fetchPortfolioPage({
           page: nextPage,
           pageSize: PORTFOLIO_PAGE_SIZE,
           city: city ?? undefined,
+          state: state ?? undefined,
           mediaType,
           category: category ?? undefined,
         })
 
         if (id !== requestId.current) return
 
-        setItems((prev) => (replace ? result.items : [...prev, ...result.items]))
-        applyCounts(result)
-        setTotal(result.total)
-        setPage(result.page)
-        setHasMore(result.hasMore)
+        applyPageResult(result, replace)
       } catch (err) {
         if (id !== requestId.current) return
-        setError(err instanceof Error ? err.message : 'Failed to load portfolio')
+        setError(toErrorMessage(err))
       } finally {
         if (id === requestId.current) {
           setLoading(false)
@@ -90,28 +76,26 @@ export function usePortfolio({ city, mediaType, category, requireCity = false }:
         }
       }
     },
-    [applyCounts, category, city, mediaType, requireCity],
+    [applyPageResult, category, city, mediaType, state],
   )
 
   useEffect(() => {
-    if (requireCity && !city) {
-      loadCountsOnly()
-      return
-    }
     setItems([])
     setPage(0)
     setHasMore(true)
-    loadPage(1, true)
-  }, [city, loadCountsOnly, loadPage, requireCity])
+    void loadPage(1, true)
+  }, [category, city, loadPage, mediaType, state])
 
   const loadMore = useCallback(() => {
-    if (loading || loadingMore || !hasMore || (requireCity && !city)) return
-    loadPage(page + 1, false)
-  }, [city, hasMore, loadPage, loading, loadingMore, page, requireCity])
+    if (loading || loadingMore || !hasMore) return
+    void loadPage(page + 1, false)
+  }, [hasMore, loadPage, loading, loadingMore, page])
 
   return {
     items,
     cityCounts,
+    stateCounts,
+    cityStates,
     categoryCounts,
     total,
     hasMore,
@@ -119,6 +103,6 @@ export function usePortfolio({ city, mediaType, category, requireCity = false }:
     loadingMore,
     error,
     loadMore,
-    retry: () => (requireCity && !city ? loadCountsOnly() : loadPage(1, true)),
+    retry: () => loadPage(1, true),
   }
 }

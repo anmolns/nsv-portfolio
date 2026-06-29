@@ -126,7 +126,7 @@ export function Hero() {
 
       <div className="relative z-10 flex h-full w-full min-w-0 flex-col justify-center max-w-[1400px] mx-auto px-5 sm:px-6 lg:px-12 pt-20 sm:pt-24">
         <h1 className="font-display w-full min-w-0 text-[clamp(1.75rem,8vw,5.5rem)] font-bold text-white leading-[1.1] sm:text-[clamp(2.25rem,7vw,5.5rem)] lg:text-[clamp(2.75rem,7.5vw,5.5rem)]">
-          <span className="block sm:whitespace-nowrap">India´s Largest Real Estate</span>
+          <span className="block sm:whitespace-nowrap">India&apos;s Largest Real Estate</span>
           <span className="block text-cyan">Content Portfolio</span>
         </h1>
 
@@ -150,16 +150,16 @@ export function Hero() {
         >
           <MagneticButton
             size="xl"
-            className="w-full text-base sm:w-auto sm:text-lg"
+            className="w-full px-14 py-6 text-lg text-white sm:w-auto sm:px-16 sm:py-6 sm:text-xl"
             variant={activeTab === 'video' ? 'primary' : 'secondary'}
             onClick={goToVideos}
             data-cursor="pointer"
           >
-            Videos
+            Videos Production
           </MagneticButton>
           <MagneticButton
             size="xl"
-            className="w-full text-base sm:w-auto sm:text-lg"
+            className="w-full px-14 py-6 text-lg text-white sm:w-auto sm:px-16 sm:py-6 sm:text-xl"
             variant={activeTab === 'virtual-tour' ? 'primary' : 'secondary'}
             onClick={goToVirtualReality}
             data-cursor="pointer"
