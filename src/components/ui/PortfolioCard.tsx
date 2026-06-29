@@ -52,23 +52,21 @@ export function PortfolioCard({
             className="portfolio-card-face portfolio-card-front absolute inset-0 overflow-hidden"
             style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
           >
-            <div className="portfolio-card-bottom-curve" aria-hidden />
-
-            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-2.5 px-4 py-5 text-center sm:gap-3 sm:px-5">
+            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4 px-4 py-5 text-center sm:gap-5 sm:px-5">
               {builder && (
-                <p className="line-clamp-2 text-[1.18rem] font-bold uppercase leading-tight tracking-[0.1em] text-white sm:text-[1.28rem] lg:text-[1.38rem]">
+                <p className="line-clamp-2 text-[1.15rem] font-semibold uppercase leading-tight tracking-[0.14em] text-white/75 sm:text-[1.22rem] lg:text-[1.3rem]">
                   {builder}
                 </p>
               )}
 
-              <h3 className="font-display line-clamp-2 text-[0.98rem] font-medium leading-snug tracking-[-0.01em] text-white/90 sm:text-[1.06rem] lg:text-[1.12rem]">
+              <h3 className="font-display line-clamp-2 text-[1.48rem] font-extrabold leading-[1.1] tracking-[-0.02em] text-white sm:text-[1.62rem] lg:text-[1.75rem]">
                 {project}
               </h3>
 
               {city && (
-                <span className="portfolio-card-city-badge mt-1 line-clamp-1">
+                <p className="line-clamp-1 text-[1.18rem] font-normal tracking-wide text-white/70 sm:text-[1.26rem] lg:text-[1.32rem]">
                   {city}
-                </span>
+                </p>
               )}
             </div>
           </div>

@@ -270,36 +270,6 @@
     pointer-events: none;
   }
 
-  .portfolio-card-bottom-curve {
-    position: absolute;
-    bottom: -1px;
-    left: 50%;
-    z-index: 1;
-    width: 88%;
-    height: 42%;
-    transform: translateX(-50%);
-    border-radius: 50% 50% 0 0 / 18% 18% 0 0;
-    background: linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.28) 0%,
-      rgba(0, 20, 40, 0.45) 100%
-    );
-    pointer-events: none;
-  }
-
-  .portfolio-card-city-badge {
-    display: inline-block;
-    max-width: 100%;
-    border-radius: 999px;
-    background: #29abe2;
-    padding: 0.38rem 1.2rem;
-    font-size: 0.88rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(41, 171, 226, 0.35);
-  }
-
   @keyframes portfolio-glow-pulse {
     0%,
     100% {

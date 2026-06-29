@@ -13,6 +13,7 @@ import type { PortfolioEntry } from '../types/portfolio'
 import {
   hasPortfolioAccess,
   PORTFOLIO_ACCESS_TIMER_MS,
+  PORTFOLIO_ACCESS_VALIDATION_ENABLED,
 } from '../lib/portfolioAccess'
 
 const PortfolioAccessGateModal = lazy(() =>
@@ -35,13 +36,17 @@ interface PortfolioAccessContextValue {
 const PortfolioAccessContext = createContext<PortfolioAccessContextValue | null>(null)
 
 export function PortfolioAccessProvider({ children }: { children: ReactNode }) {
-  const [isValidated, setIsValidated] = useState(() => hasPortfolioAccess())
+  const [isValidated, setIsValidated] = useState(() =>
+    PORTFOLIO_ACCESS_VALIDATION_ENABLED ? hasPortfolioAccess() : true,
+  )
   const [gateOpen, setGateOpen] = useState(false)
   const [pendingEntry, setPendingEntry] = useState<PortfolioEntry | null>(null)
   const [activeEntry, setActiveEntry] = useState<PortfolioEntry | null>(null)
   const timerStartedRef = useRef(false)
 
+  // TEMP: validation disabled — re-enable via PORTFOLIO_ACCESS_VALIDATION_ENABLED
   useEffect(() => {
+    if (!PORTFOLIO_ACCESS_VALIDATION_ENABLED) return
     if (isValidated || timerStartedRef.current) return
     timerStartedRef.current = true
 
@@ -58,6 +63,11 @@ export function PortfolioAccessProvider({ children }: { children: ReactNode }) {
 
   const openPortfolioItem = useCallback(
     (entry: PortfolioEntry) => {
+      if (!PORTFOLIO_ACCESS_VALIDATION_ENABLED) {
+        setActiveEntry(entry)
+        return
+      }
+
       if (isValidated || hasPortfolioAccess()) {
         setActiveEntry(entry)
         return
@@ -89,7 +99,7 @@ export function PortfolioAccessProvider({ children }: { children: ReactNode }) {
     <PortfolioAccessContext.Provider value={{ isValidated, openPortfolioItem }}>
       {children}
 
-      {gateOpen && !isValidated && (
+      {PORTFOLIO_ACCESS_VALIDATION_ENABLED && gateOpen && !isValidated && (
         <Suspense fallback={null}>
           <PortfolioAccessGateModal
             pendingProjectName={pendingProjectName}
