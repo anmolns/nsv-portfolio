@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 
+import { PortfolioAccessProvider } from './context/PortfolioAccessContext'
 import { Navbar } from './components/layout/Navbar'
 import { Hero } from './components/sections/Hero'
 import { useLenis } from './hooks/useLenis'
@@ -59,7 +60,7 @@ export default function PublicApp() {
   const [inquiryOpen, setInquiryOpen] = useState(false)
 
   return (
-    <>
+    <PortfolioAccessProvider>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:px-4 focus:py-2 focus:bg-cyan focus:text-navy"
@@ -89,6 +90,6 @@ export default function PublicApp() {
           <ProjectInquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
         </Suspense>
       )}
-    </>
+    </PortfolioAccessProvider>
   )
 }

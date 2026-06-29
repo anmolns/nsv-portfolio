@@ -155,7 +155,7 @@ export function Hero() {
             onClick={goToVideos}
             data-cursor="pointer"
           >
-            Videos Production
+            Video Production
           </MagneticButton>
           <MagneticButton
             size="xl"

@@ -8,13 +8,11 @@ import { slugify } from '../../lib/utils'
 import {
   createTour,
   deleteTourThumbnail,
-  fetchAdminCities,
   fetchAdminTour,
   updateTour,
   uploadTourThumbnail,
 } from '../api/adminPortfolio'
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
-import { CityPicker } from '../components/CityPicker'
 import { INDIAN_STATES } from '../../data/indianStates'
 import {
   clearTourFormDraft,
@@ -23,15 +21,17 @@ import {
   readTourFormDraft,
   writeTourFormDraft,
 } from '../lib/tourFormDraft'
-import type { CityRow, TourFormValues } from '../types'
+import type { TourFormValues } from '../types'
 
 const emptyForm: TourFormValues = {
   id: '',
   name: '',
   link: '',
-  city_id: '',
+  state: '',
+  builder_name: '',
+  project_name: '',
+  city_label: '',
   media_type: 'virtual-tour',
-  category: '',
   is_published: true,
   sort_order: 0,
 }
@@ -48,8 +48,7 @@ export function TourFormPage() {
     if (isEdit) return emptyForm
     return readTourFormDraft(draftKey) ?? emptyForm
   })
-  const [cities, setCities] = useState<CityRow[]>([])
-  const [selectedState, setSelectedState] = useState('')
+  const [existingCategory, setExistingCategory] = useState<string | null>(null)
   const [thumbFile, setThumbFile] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(null)
   const [existingThumb, setExistingThumb] = useState<string | null>(null)
@@ -63,18 +62,6 @@ export function TourFormPage() {
     const draft = readTourFormDraft(draftKey)
     return Boolean(draft?.id)
   })
-
-  useEffect(() => {
-    fetchAdminCities()
-      .then(setCities)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load cities'))
-  }, [])
-
-  useEffect(() => {
-    if (selectedState || !form.city_id) return
-    const city = cities.find((c) => c.id === form.city_id)
-    if (city?.state) setSelectedState(city.state)
-  }, [cities, form.city_id, selectedState])
 
   useEffect(() => {
     if (skipNextSave.current) {
@@ -125,14 +112,17 @@ export function TourFormPage() {
           id: tour.id,
           name: tour.name,
           link: tour.link,
-          city_id: tour.city_id ?? '',
+          state: tour.state ?? '',
+          builder_name: tour.builder_name ?? '',
+          project_name: tour.project_name?.trim() || tour.name,
+          city_label: tour.city_label ?? tour.cities?.name ?? '',
           media_type: inferMediaTypeFromLink(link),
-          category: tour.category ?? '',
           is_published: tour.is_published,
           sort_order: tour.sort_order,
         }
 
         serverLoaded.current = true
+        setExistingCategory(tour.category)
         setForm(
           draft && hasTourFormDraftContent(draft)
             ? { ...draft, media_type: inferMediaTypeFromLink(draft.link || tour.link) }
@@ -155,18 +145,19 @@ export function TourFormPage() {
     return () => URL.revokeObjectURL(url)
   }, [thumbFile])
 
-  const handleNameChange = (name: string) => {
+  const handleProjectNameChange = (projectName: string) => {
     setForm((f) => ({
       ...f,
-      name,
-      id: !isEdit && !idTouched ? slugify(name) : f.id,
+      project_name: projectName,
+      name: projectName,
+      id: !isEdit && !idTouched ? slugify(projectName) : f.id,
     }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.id.trim() || !form.name.trim() || !form.link.trim()) {
-      setError('Name, ID, and link are required.')
+    if (!form.id.trim() || !form.project_name.trim() || !form.link.trim() || !form.state.trim()) {
+      setError('State, project name, ID, and link are required.')
       return
     }
 
@@ -180,13 +171,18 @@ export function TourFormPage() {
         thumbnailPath = await uploadTourThumbnail(form.id, thumbFile, existingThumb)
       }
 
+      const projectName = form.project_name.trim()
       const payload = {
         id: form.id.trim(),
-        name: form.name.trim(),
+        name: projectName,
         link: form.link.trim(),
-        city_id: form.city_id || null,
+        state: form.state.trim(),
+        builder_name: form.builder_name.trim() || null,
+        project_name: projectName,
+        city_label: form.city_label.trim() || null,
+        city_id: null,
         media_type: form.media_type,
-        category: form.media_type === 'video' ? form.category.trim() || null : null,
+        category: existingCategory,
         is_published: form.is_published,
         sort_order: form.sort_order,
         thumbnail_path: thumbnailPath,
@@ -289,13 +285,37 @@ export function TourFormPage() {
 
             <div>
               <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
+                Builder name
+              </label>
+              <input
+                value={form.builder_name}
+                onChange={(e) => setForm((f) => ({ ...f, builder_name: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
+                placeholder="e.g. DSPL"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
                 Project name *
               </label>
               <input
-                value={form.name}
-                onChange={(e) => handleNameChange(e.target.value)}
+                value={form.project_name}
+                onChange={(e) => handleProjectNameChange(e.target.value)}
                 className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
                 placeholder="Ace Divino"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
+                City
+              </label>
+              <input
+                value={form.city_label}
+                onChange={(e) => setForm((f) => ({ ...f, city_label: e.target.value }))}
+                className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
+                placeholder="Patna"
               />
             </div>
 
@@ -338,15 +358,11 @@ export function TourFormPage() {
             <div className="grid sm:grid-cols-2 gap-5">
               <div>
                 <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
-                  State
+                  State *
                 </label>
                 <select
-                  value={selectedState}
-                  onChange={(e) => {
-                    const nextState = e.target.value
-                    setSelectedState(nextState)
-                    setForm((f) => ({ ...f, city_id: '' }))
-                  }}
+                  value={form.state}
+                  onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
                   className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
                 >
                   <option value="">Select state…</option>
@@ -358,15 +374,6 @@ export function TourFormPage() {
                 </select>
               </div>
 
-              <CityPicker
-                cities={cities}
-                value={form.city_id}
-                onChange={(cityId) => setForm((f) => ({ ...f, city_id: cityId }))}
-                onCitiesChange={setCities}
-                stateFilter={selectedState || null}
-                createState={selectedState || null}
-              />
-
               <div>
                 <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
                   Media type
@@ -377,7 +384,6 @@ export function TourFormPage() {
                     setForm((f) => ({
                       ...f,
                       media_type: e.target.value as TourFormValues['media_type'],
-                      category: e.target.value === 'video' ? f.category : '',
                     }))
                   }
                   className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
@@ -389,20 +395,6 @@ export function TourFormPage() {
                   YouTube links are auto-set to Video.
                 </p>
               </div>
-
-              {form.media_type === 'video' && (
-                <div className="sm:col-span-2">
-                  <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
-                    Category
-                  </label>
-                  <input
-                    value={form.category}
-                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
-                    placeholder="e.g. Route Video, Construction Update"
-                  />
-                </div>
-              )}
             </div>
 
             <div className="flex flex-wrap gap-6 pt-2">

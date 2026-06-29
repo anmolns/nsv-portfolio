@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { usePortfolioAccess } from '../../context/PortfolioAccessContext'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { INDIAN_STATES } from '../../data/indianStates'
 import { parseMediaFilter } from '../../lib/portfolioNav'
 import type { PortfolioEntry, PortfolioMediaType } from '../../types/portfolio'
 import { PortfolioCard } from '../ui/PortfolioCard'
 import { SearchableFilterDropdown } from '../ui/SearchableFilterDropdown'
-import { openPortfolioEntry } from '../../lib/openPortfolioLink'
 
-const CARD_GRID = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4'
+const CARD_GRID = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 lg:gap-5'
 
 export function Portfolio() {
   const [mediaFilter, setMediaFilter] = useState<PortfolioMediaType>(() =>
@@ -16,6 +16,7 @@ export function Portfolio() {
   )
   const [activeState, setActiveState] = useState<string | null>(null)
   const loadMoreRef = useRef<HTMLDivElement>(null)
+  const { openPortfolioItem } = usePortfolioAccess()
 
   const {
     items,
@@ -82,9 +83,12 @@ export function Portfolio() {
     return () => observer.disconnect()
   }, [hasMore, loading, loadingMore, loadMore, items.length])
 
-  const handleOpen = (entry: PortfolioEntry) => {
-    openPortfolioEntry(entry)
-  }
+  const handleOpen = useCallback(
+    (entry: PortfolioEntry) => {
+      openPortfolioItem(entry)
+    },
+    [openPortfolioItem],
+  )
 
   const emptyMessage = activeState
     ? mediaFilter === 'video'
@@ -156,6 +160,7 @@ export function Portfolio() {
           )}
         </div>
       </section>
+
     </>
   )
 }

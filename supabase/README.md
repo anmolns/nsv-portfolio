@@ -6,14 +6,86 @@
 2. **SQL Editor** → run `supabase/migrations/002_portfolio_category.sql` (video categories from bulk upload)
 3. **SQL Editor** → run `supabase/migrations/003_portfolio_category_filter.sql` (category filter on live site)
 4. **SQL Editor** → run `supabase/migrations/004_category_counts_by_media_type.sql` (category counts per videos / VR page)
-5. Add `.env.local`:
+5. **SQL Editor** → run `supabase/migrations/005_add_state_to_cities.sql`
+6. **SQL Editor** → run `supabase/migrations/006_state_counts_all_cities.sql`
+7. **SQL Editor** → run `supabase/migrations/007_portfolio_state_labels.sql` (state + builder/project/city on items)
+8. **SQL Editor** → run `supabase/migrations/008_hide_portfolio_links.sql` (hide links from public API)
+9. **SQL Editor** → run `supabase/migrations/009_portfolio_whatsapp_otp.sql` (WhatsApp OTP table)
+10. Add `.env.local`:
 
 ```env
 VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-6. Restart `npm run dev`
+11. Restart `npm run dev`
+
+---
+
+## Step 1b — Portfolio WhatsApp OTP (Meta Cloud API)
+
+OTP is sent via the **official [WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api)** in Supabase Edge Functions. No OTP logic runs in the browser.
+
+### A. Meta / WhatsApp setup
+
+1. Go to [Meta for Developers](https://developers.facebook.com/) → create or open your app
+2. Add product **WhatsApp** → **API Setup**
+3. Note your **Phone number ID** and generate a **permanent access token**
+4. In **WhatsApp Manager** → **Message templates** → **Create template**
+   - **Category:** Authentication
+   - **Name:** `portfolio_access_otp` (or your choice — set `WHATSAPP_OTP_TEMPLATE`)
+   - **Body example:** `{{1}} is your verification code.`
+   - Add **Copy code** button if using authentication type (recommended)
+   - Submit for approval
+5. Add your business phone number and complete Meta business verification if required
+
+### B. Supabase secrets
+
+Dashboard → **Edge Functions** → **Secrets**:
+
+| Secret | Required | Example |
+|--------|----------|---------|
+| `OTP_HASH_SECRET` | Yes | Random 32+ char string |
+| `WHATSAPP_ACCESS_TOKEN` | Yes* | Permanent token from Meta |
+| `WHATSAPP_PHONE_NUMBER_ID` | Yes* | e.g. `123456789012345` |
+| `WHATSAPP_OTP_TEMPLATE` | Yes | `portfolio_access_otp` |
+| `WHATSAPP_TEMPLATE_LANGUAGE` | No | `en` or `en_US` (match template) |
+| `WHATSAPP_OTP_TEMPLATE_TYPE` | No | `authentication` (default) or `utility` |
+| `WHATSAPP_OTP_COPY_BUTTON` | No | `true` (default) — set `false` if no button in template |
+| `WHATSAPP_DEV_MODE` | No | `true` = log OTP only (testing) |
+
+\*Not required when `WHATSAPP_DEV_MODE=true`
+
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically on deploy.
+
+### C. Deploy edge functions
+
+**Option 1 — CLI**
+
+```bash
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase functions deploy portfolio-otp-send
+npx supabase functions deploy portfolio-otp-verify
+```
+
+**Option 2 — Supabase Dashboard (manual)**
+
+1. **Edge Functions** → **Create function** → name `portfolio-otp-send`
+2. Paste code from `supabase/functions/portfolio-otp-send/index.ts` **plus** inline the contents of `supabase/functions/_shared/portfolio-otp.ts` at the top (Dashboard does not support `_shared` imports)
+3. Repeat for `portfolio-otp-verify`
+4. For each function: disable **Enforce JWT verification** (public site has no login)
+
+When pasting manually, copy `supabase/functions/_shared/portfolio-otp.ts` into the top of each function file and remove the `import ... from '../_shared/...'` line.
+
+### D. Database
+
+Run `supabase/migrations/009_portfolio_whatsapp_otp.sql` in SQL Editor.
+
+### E. Test
+
+1. Set `WHATSAPP_DEV_MODE=true` → submit modal → check **portfolio-otp-send** logs for the code
+2. Set real Meta secrets + `WHATSAPP_DEV_MODE=false` → code arrives on WhatsApp
 
 ---
 

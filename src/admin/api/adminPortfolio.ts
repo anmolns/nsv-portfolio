@@ -304,10 +304,14 @@ export async function duplicateTour(id: string): Promise<string> {
 
   await createTour({
     id: newId,
-    name: `${tour.name} (Copy)`,
+    name: `${tour.project_name?.trim() || tour.name} (Copy)`,
     link: tour.link,
     thumbnail_path: thumbnailPath,
-    city_id: tour.city_id,
+    city_id: null,
+    state: tour.state,
+    builder_name: tour.builder_name,
+    project_name: tour.project_name?.trim() || tour.name,
+    city_label: tour.city_label,
     media_type: tour.media_type,
     category: tour.category,
     is_published: false,

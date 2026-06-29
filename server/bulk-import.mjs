@@ -105,38 +105,27 @@ function withCategory(fields, category, categorySupported) {
   return { ...fields, category }
 }
 
-async function resolveCityIdForState(adminClient, state) {
-  const trimmed = state?.trim()
-  if (!trimmed) return null
-
-  const { data: bucket } = await adminClient
-    .from('cities')
-    .select('id')
-    .eq('name', trimmed)
-    .eq('state', trimmed)
-    .maybeSingle()
-  if (bucket) return bucket.id
-
-  const { data: lastCity } = await adminClient
-    .from('cities')
-    .select('sort_order')
-    .order('sort_order', { ascending: false })
+async function detectLabelColumns(adminClient) {
+  const { error } = await adminClient
+    .from('portfolio_items')
+    .select('state, builder_name, project_name, city_label')
     .limit(1)
-    .maybeSingle()
+  return !error
+}
 
-  const { data: created, error } = await adminClient
-    .from('cities')
-    .insert({
-      name: trimmed,
-      state: trimmed,
-      sort_order: (lastCity?.sort_order ?? 0) + 1,
-      is_active: true,
-    })
-    .select('id')
-    .single()
+function withItemLabels(fields, row, state, labelsSupported) {
+  if (!labelsSupported) return fields
 
-  if (error) throw new Error(error.message)
-  return created.id
+  const projectName = row.projectName?.trim() || row.name?.trim() || fields.name || null
+  return {
+    ...fields,
+    state: state?.trim() || null,
+    builder_name: row.builderName?.trim() || null,
+    project_name: projectName,
+    city_label: row.cityLabel?.trim() || null,
+    name: projectName || fields.name,
+    city_id: null,
+  }
 }
 
 async function processBulkImport(req, res) {
@@ -188,13 +177,13 @@ async function processBulkImport(req, res) {
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
   const categorySupported = await detectCategoryColumn(adminClient)
+  const labelsSupported = await detectLabelColumns(adminClient)
 
-  let cityId
-  try {
-    cityId = await resolveCityIdForState(adminClient, state)
-  } catch (err) {
-    sendJson(res, 500, { error: `Could not resolve city for state: ${err.message}` })
-    return
+  if (!labelsSupported) {
+    sendSse(res, 'warn', {
+      message:
+        'State/label columns not in database yet — run supabase/migrations/007_portfolio_state_labels.sql, then retry import.',
+    })
   }
 
   const existingSelect = categorySupported
@@ -232,7 +221,7 @@ async function processBulkImport(req, res) {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
       const link = row.link?.trim()
-      const name = row.name?.trim()
+      const projectName = row.projectName?.trim() || row.name?.trim()
       const category = row.category?.trim() || null
 
       if (!link?.startsWith('http')) {
@@ -240,7 +229,7 @@ async function processBulkImport(req, res) {
         sendSse(res, 'item', {
           index: i + 1,
           total: rows.length,
-          name: name || `Row ${i + 1}`,
+          name: projectName || `Row ${i + 1}`,
           status: 'error',
           message: 'Invalid link',
         })
@@ -249,7 +238,7 @@ async function processBulkImport(req, res) {
 
       const resolvedMediaType = resolveMediaTypeFromLink(link, mediaType)
       const baseId = idFromLink(link, resolvedMediaType)
-      const displayName = name || baseId
+      const displayName = projectName || baseId
 
       sendSse(res, 'item', {
         index: i + 1,
@@ -271,6 +260,17 @@ async function processBulkImport(req, res) {
         }
         if (categorySupported && category && category !== existingByLink.category) {
           patch.category = category
+        }
+        if (labelsSupported) {
+          Object.assign(
+            patch,
+            withItemLabels(
+              { name: displayName },
+              row,
+              state,
+              true,
+            ),
+          )
         }
 
         if (Object.keys(patch).length > 0) {
@@ -365,34 +365,42 @@ async function processBulkImport(req, res) {
           const { error } = await adminClient
             .from('portfolio_items')
             .update(
-              withCategory(
-                {
-                  name: displayName,
-                  thumbnail_path: thumbnailPath,
-                  city_id: cityId,
-                  media_type: resolvedMediaType,
-                },
-                category,
-                categorySupported,
+              withItemLabels(
+                withCategory(
+                  {
+                    name: displayName,
+                    thumbnail_path: thumbnailPath,
+                    media_type: resolvedMediaType,
+                  },
+                  category,
+                  categorySupported,
+                ),
+                row,
+                state,
+                labelsSupported,
               ),
             )
             .eq('id', tourId)
           if (error) throw new Error(error.message)
         } else {
           const { error } = await adminClient.from('portfolio_items').insert(
-            withCategory(
-              {
-                id: tourId,
-                name: displayName,
-                link,
-                thumbnail_path: thumbnailPath,
-                city_id: cityId,
-                media_type: resolvedMediaType,
-                is_published: true,
-                sort_order: sortOrder++,
-              },
-              category,
-              categorySupported,
+            withItemLabels(
+              withCategory(
+                {
+                  id: tourId,
+                  name: displayName,
+                  link,
+                  thumbnail_path: thumbnailPath,
+                  media_type: resolvedMediaType,
+                  is_published: true,
+                  sort_order: sortOrder++,
+                },
+                category,
+                categorySupported,
+              ),
+              row,
+              state,
+              labelsSupported,
             ),
           )
           if (error) throw new Error(error.message)

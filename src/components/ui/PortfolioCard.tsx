@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import {
   GENERIC_PORTFOLIO_THUMBNAIL,
   getPortfolioThumbnail,
@@ -22,13 +21,9 @@ export function PortfolioCard({
   )
   const canHover = useMediaQuery('(hover: hover)')
 
-  const handleEnter = () => {
-    if (canHover) setFlipped(true)
-  }
-
-  const handleLeave = () => {
-    if (canHover) setFlipped(false)
-  }
+  const builder = entry.builderName?.trim()
+  const project = (entry.projectName ?? entry.name).trim()
+  const city = entry.city?.trim()
 
   const handleClick = () => {
     if (!canHover) {
@@ -43,36 +38,44 @@ export function PortfolioCard({
   return (
     <div
       className="portfolio-card group w-full [content-visibility:auto]"
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
+      onClick={handleClick}
+      data-cursor="pointer"
     >
-      <div className="w-full" style={{ perspective: '1000px' }}>
-        <motion.div
-          className="relative w-full aspect-[3/2] cursor-pointer rounded-xl"
-          style={{ transformStyle: 'preserve-3d' }}
-          animate={{ rotateY: flipped ? 180 : 0 }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          onClick={handleClick}
-          data-cursor="pointer"
+      <div className="portfolio-card-perspective w-full">
+        <div
+          className={`portfolio-card-flipper portfolio-card-shell relative w-full aspect-[3/2] cursor-pointer${
+            !canHover && flipped ? ' portfolio-card-flipped' : ''
+          }`}
         >
+          {/* Front */}
           <div
-            className="absolute inset-0 overflow-hidden rounded-xl"
+            className="portfolio-card-face portfolio-card-front absolute inset-0 overflow-hidden"
             style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-navy-deep via-navy to-navy-card" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_110%,rgba(41,171,226,0.28),transparent_62%)]" />
+            <div className="portfolio-card-bottom-curve" aria-hidden />
 
-            <div className="relative z-10 flex h-full min-h-0 flex-col items-center justify-center px-3 py-2 text-center sm:px-4 sm:py-3">
-              <h3 className="font-display line-clamp-3 min-h-0 w-full max-w-full shrink px-0.5 text-lg font-extrabold leading-snug tracking-[-0.02em] text-balance sm:text-xl lg:text-2xl">
-                <span className="inline-block bg-gradient-to-b from-white via-white to-cyan-bright/90 bg-clip-text pb-1 text-transparent">
-                  {entry.name}
-                </span>
+            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-2.5 px-4 py-5 text-center sm:gap-3 sm:px-5">
+              {builder && (
+                <p className="line-clamp-2 text-[1.18rem] font-bold uppercase leading-tight tracking-[0.1em] text-white sm:text-[1.28rem] lg:text-[1.38rem]">
+                  {builder}
+                </p>
+              )}
+
+              <h3 className="font-display line-clamp-2 text-[0.98rem] font-medium leading-snug tracking-[-0.01em] text-white/90 sm:text-[1.06rem] lg:text-[1.12rem]">
+                {project}
               </h3>
+
+              {city && (
+                <span className="portfolio-card-city-badge mt-1 line-clamp-1">
+                  {city}
+                </span>
+              )}
             </div>
           </div>
 
+          {/* Back — thumbnail only */}
           <div
-            className="absolute inset-0 rounded-xl overflow-hidden bg-navy shadow-md shadow-navy/10"
+            className="portfolio-card-face absolute inset-0 overflow-hidden bg-navy"
             style={{
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
@@ -86,11 +89,11 @@ export function PortfolioCard({
               height={PORTFOLIO_THUMB_HEIGHT}
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="absolute inset-0 h-full w-full object-cover"
               onError={() => setThumbnailSrc(GENERIC_PORTFOLIO_THUMBNAIL)}
             />
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   )

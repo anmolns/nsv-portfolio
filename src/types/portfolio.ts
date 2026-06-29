@@ -1,15 +1,23 @@
 export type PortfolioMediaType = 'video' | 'virtual-tour'
 
-/** Slim shape expected from your backend API */
+/** Slim shape returned by the public portfolio list API (no media links). */
 export interface PortfolioEntry {
   id: string
   name: string
-  link: string
   thumbnail?: string | null
+  builderName?: string | null
+  projectName?: string | null
   city?: string | null
   state?: string | null
   mediaType: PortfolioMediaType
+  /** Stored in DB; not shown on the public site */
   category?: string | null
+}
+
+/** Fetched on demand when a user opens the viewer modal. */
+export interface PortfolioViewerPayload {
+  link: string
+  mediaType: PortfolioMediaType
 }
 
 export interface PortfolioPage {

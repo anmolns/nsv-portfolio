@@ -1,18 +1,27 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import importedTours from '../../data/imported-tours.json'
+import carouselTours from '../../data/carousel-tours.json'
 import type { PortfolioEntry } from '../../types/portfolio'
 import {
   GENERIC_PORTFOLIO_THUMBNAIL,
   getPortfolioThumbnail,
 } from '../../lib/portfolioMedia'
 
-const carouselTours = (importedTours as PortfolioEntry[]).slice(0, 8)
+const featuredTours = carouselTours as Pick<
+  PortfolioEntry,
+  'id' | 'name' | 'thumbnail' | 'city' | 'mediaType'
+>[]
 
 gsap.registerPlugin(ScrollTrigger)
 
-function OffsetCard({ project, index }: { project: PortfolioEntry; index: number }) {
+function OffsetCard({
+  project,
+  index,
+}: {
+  project: (typeof featuredTours)[number]
+  index: number
+}) {
   const zigzag = index % 2 === 0 ? -64 : 64
 
   return (
@@ -189,7 +198,7 @@ export function OffsetCarousel() {
             </h2>
             <span className="text-navy/40 text-sm font-semibold tabular-nums shrink-0">
               {String(activeIndex + 1).padStart(2, '0')} /{' '}
-              {String(carouselTours.length).padStart(2, '0')}
+              {String(featuredTours.length).padStart(2, '0')}
             </span>
           </div>
         </div>
@@ -203,14 +212,14 @@ export function OffsetCarousel() {
               paddingRight: 'max(1.5rem, calc(50vw - 190px))',
             }}
           >
-            {carouselTours.map((project, i) => (
+            {featuredTours.map((project, i) => (
               <OffsetCard key={project.id} project={project} index={i} />
             ))}
           </div>
         </div>
 
         <p className="text-center text-slate text-xs mt-4 tracking-wide shrink-0">
-          Scroll to navigate · {carouselTours.length} tours
+          Scroll to navigate · {featuredTours.length} tours
         </p>
       </div>
     </section>

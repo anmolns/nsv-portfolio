@@ -14,15 +14,17 @@ export function readTourFormDraft(key: string): TourFormValues | null {
   try {
     const raw = localStorage.getItem(key)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<TourFormValues>
+    const parsed = JSON.parse(raw) as Partial<TourFormValues> & { city_id?: string }
     if (!parsed || typeof parsed !== 'object') return null
     return {
       id: parsed.id ?? '',
       name: parsed.name ?? '',
       link: parsed.link ?? '',
-      city_id: parsed.city_id ?? '',
+      state: parsed.state ?? '',
+      builder_name: parsed.builder_name ?? '',
+      project_name: parsed.project_name ?? parsed.name ?? '',
+      city_label: parsed.city_label ?? '',
       media_type: parsed.media_type === 'video' ? 'video' : 'virtual-tour',
-      category: parsed.category ?? '',
       is_published: parsed.is_published ?? true,
       sort_order: parsed.sort_order ?? 0,
     }
@@ -48,5 +50,12 @@ export function clearTourFormDraft(key: string) {
 }
 
 export function hasTourFormDraftContent(form: TourFormValues) {
-  return Boolean(form.name.trim() || form.link.trim() || form.id.trim() || form.city_id)
+  return Boolean(
+    form.project_name.trim() ||
+      form.link.trim() ||
+      form.id.trim() ||
+      form.state.trim() ||
+      form.builder_name.trim() ||
+      form.city_label.trim(),
+  )
 }

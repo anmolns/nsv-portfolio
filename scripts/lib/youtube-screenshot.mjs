@@ -1,6 +1,11 @@
 import { launchTourBrowser } from './tour-screenshot.mjs'
+import {
+  screenshotBestMediaSurface,
+  tryClickFullscreen,
+  tryTheaterMode,
+} from './screenshot-utils.mjs'
 
-export const YOUTUBE_WAIT_MS = 10_000
+export const YOUTUBE_WAIT_MS = 12_000
 
 async function dismissYoutubeConsent(page) {
   const selectors = [
@@ -31,20 +36,15 @@ export async function screenshotYoutubeToBuffer(page, url, options = {}) {
   )
   await playButton.click({ timeout: 15000 }).catch(() => {})
 
-  await page.waitForTimeout(1200)
+  const video = page.locator('video').first()
+  await video.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {})
 
-  const fullscreenButton = page.locator(
-    '.ytp-fullscreen-button, button.ytp-fullscreen-button, button[aria-label="Full screen"]',
-  )
-  await fullscreenButton.click({ timeout: 10000 }).catch(() => {})
-
+  await page.waitForTimeout(1500)
+  await tryTheaterMode(page)
+  await tryClickFullscreen(page)
   await page.waitForTimeout(waitMs)
 
-  return page.screenshot({
-    type: 'jpeg',
-    quality: 82,
-    fullPage: false,
-  })
+  return screenshotBestMediaSurface(page)
 }
 
 export { launchTourBrowser }

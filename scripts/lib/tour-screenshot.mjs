@@ -1,22 +1,27 @@
 import { chromium } from 'playwright'
+import {
+  SCREENSHOT_VIEWPORT,
+  screenshotBestMediaSurface,
+  tryClickFullscreen,
+} from './screenshot-utils.mjs'
 
 export const DEFAULT_SCREENSHOT_OPTIONS = {
   waitMs: 12000,
-  panPx: 160,
+  panPx: 200,
   scrollDelta: 120,
-  settleMs: 1500,
+  settleMs: 1800,
   noPan: false,
 }
 
 async function nudgeTourView(page, options) {
   const { panPx, scrollDelta, settleMs } = options
-  const { width, height } = page.viewportSize() ?? { width: 1280, height: 720 }
+  const { width, height } = page.viewportSize() ?? SCREENSHOT_VIEWPORT
   const cx = width / 2
   const cy = height / 2
 
   await page.mouse.move(cx, cy)
   await page.mouse.down()
-  await page.mouse.move(cx, cy - panPx, { steps: 12 })
+  await page.mouse.move(cx, cy - panPx, { steps: 14 })
   await page.mouse.up()
   await page.waitForTimeout(400)
   await page.mouse.move(cx, cy)
@@ -26,7 +31,7 @@ async function nudgeTourView(page, options) {
 
 export async function launchTourBrowser() {
   const browser = await chromium.launch({ headless: true })
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } })
+  const page = await browser.newPage({ viewport: SCREENSHOT_VIEWPORT })
   return { browser, page }
 }
 
@@ -40,11 +45,10 @@ export async function screenshotTourToBuffer(page, url, options = {}) {
     await nudgeTourView(page, opts)
   }
 
-  return page.screenshot({
-    type: 'jpeg',
-    quality: 82,
-    fullPage: false,
-  })
+  await tryClickFullscreen(page)
+  await page.waitForTimeout(800)
+
+  return screenshotBestMediaSurface(page)
 }
 
 export async function screenshotTourToFile(page, url, outPath, options = {}) {

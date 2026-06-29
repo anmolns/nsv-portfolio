@@ -1,5 +1,5 @@
 import { getSupabase } from '../lib/supabase'
-import type { PortfolioPage, PortfolioQuery } from '../types/portfolio'
+import type { PortfolioPage, PortfolioQuery, PortfolioViewerPayload } from '../types/portfolio'
 
 export async function fetchPortfolioPageFromSupabase(
   query: PortfolioQuery,
@@ -20,4 +20,20 @@ export async function fetchPortfolioPageFromSupabase(
   }
 
   return data as PortfolioPage
+}
+
+export async function fetchPortfolioViewerFromSupabase(
+  itemId: string,
+): Promise<PortfolioViewerPayload | null> {
+  const supabase = getSupabase()
+
+  const { data, error } = await supabase.rpc('get_portfolio_viewer', {
+    p_item_id: itemId,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (data as PortfolioViewerPayload | null) ?? null
 }

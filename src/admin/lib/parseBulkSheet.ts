@@ -4,6 +4,9 @@ export interface BulkRow {
   name: string
   link: string
   category?: string | null
+  builderName?: string | null
+  projectName?: string | null
+  cityLabel?: string | null
 }
 
 export type BulkSheetKind = 'tour' | 'video'
@@ -54,6 +57,15 @@ function nameFromLink(link: string): string {
     .trim()
 }
 
+function findColumnIndex(headers: string[], matchers: ((h: string) => boolean)[]): number {
+  const lower = headers.map((h) => h.trim().toLowerCase())
+  for (const match of matchers) {
+    const idx = lower.findIndex(match)
+    if (idx >= 0) return idx
+  }
+  return -1
+}
+
 function resolveColumns(headers: string[]) {
   const lower = headers.map((h) => h.trim().toLowerCase())
 
@@ -63,20 +75,46 @@ function resolveColumns(headers: string[]) {
     lower.includes('url') ||
     lower.includes('title') ||
     lower.some((h) => h.includes('youtube')) ||
-    lower.some((h) => h.includes('category') || h.includes('catgor'))
+    lower.some((h) => h.includes('category') || h.includes('catgor')) ||
+    lower.some((h) => h.includes('builder')) ||
+    lower.some((h) => h.includes('project')) ||
+    lower.some((h) => h.includes('city'))
 
-  let nameIdx = lower.indexOf('name')
-  if (nameIdx === -1) nameIdx = lower.indexOf('title')
+  const nameIdx = findColumnIndex(headers, [
+    (h) => h === 'name',
+    (h) => h === 'title',
+    (h) => h.includes('project name'),
+    (h) => h === 'project',
+  ])
 
-  let linkIdx = lower.indexOf('link')
-  if (linkIdx === -1) linkIdx = lower.indexOf('url')
-  if (linkIdx === -1) linkIdx = lower.findIndex((h) => h.includes('youtube'))
+  const linkIdx = findColumnIndex(headers, [
+    (h) => h === 'link',
+    (h) => h === 'url',
+    (h) => h.includes('youtube'),
+  ])
 
-  const categoryIdx = lower.findIndex(
+  const categoryIdx = findColumnIndex(headers, [
     (h) => h.includes('category') || h.includes('catgor'),
-  )
+  ])
 
-  return { hasHeader, nameIdx, linkIdx, categoryIdx }
+  const builderIdx = findColumnIndex(headers, [(h) => h.includes('builder')])
+
+  const projectIdx = findColumnIndex(headers, [
+    (h) => h.includes('project name'),
+    (h) => h === 'project',
+  ])
+
+  const cityIdx = findColumnIndex(headers, [
+    (h) => h.includes('city name'),
+    (h) => h === 'city',
+  ])
+
+  return { hasHeader, nameIdx, linkIdx, categoryIdx, builderIdx, projectIdx, cityIdx }
+}
+
+function cellValue(cols: string[], idx: number): string {
+  if (idx < 0) return ''
+  return (cols[idx] ?? '').replace(/^"|"$/g, '').trim()
 }
 
 function rowsFromTable(
@@ -85,6 +123,9 @@ function rowsFromTable(
   linkIdx: number,
   kind: BulkSheetKind,
   categoryIdx = -1,
+  builderIdx = -1,
+  projectIdx = -1,
+  cityIdx = -1,
 ): BulkRow[] {
   if (linkIdx === -1) {
     throw new Error(
@@ -100,14 +141,18 @@ function rowsFromTable(
     if (!link) continue
     if (kind === 'video' && !isYoutubeLink(link)) continue
 
-    const nameRaw = nameIdx >= 0 ? (cols[nameIdx] ?? '').replace(/^"|"$/g, '').trim() : ''
-    const categoryRaw =
-      categoryIdx >= 0 ? (cols[categoryIdx] ?? '').replace(/^"|"$/g, '').trim() : ''
+    const projectName = cellValue(cols, projectIdx) || cellValue(cols, nameIdx)
+    const builderName = cellValue(cols, builderIdx)
+    const cityLabel = cellValue(cols, cityIdx)
+    const categoryRaw = cellValue(cols, categoryIdx)
 
     rows.push({
-      name: nameRaw || nameFromLink(link),
+      name: projectName || nameFromLink(link),
       link,
       category: categoryRaw || null,
+      builderName: builderName || null,
+      projectName: projectName || null,
+      cityLabel: cityLabel || null,
     })
   }
 
@@ -122,37 +167,54 @@ function rowsFromTable(
   return rows
 }
 
+function resolveIndices(
+  hasHeader: boolean,
+  kind: BulkSheetKind,
+  indices: ReturnType<typeof resolveColumns>,
+) {
+  let {
+    nameIdx,
+    linkIdx,
+    categoryIdx,
+    builderIdx,
+    projectIdx,
+    cityIdx,
+  } = indices
+
+  if (!hasHeader) {
+    if (kind === 'video') {
+      categoryIdx = 0
+      nameIdx = 1
+      linkIdx = 2
+    } else {
+      nameIdx = 0
+      linkIdx = 1
+      categoryIdx = -1
+    }
+  }
+
+  return { nameIdx, linkIdx, categoryIdx, builderIdx, projectIdx, cityIdx }
+}
+
 export function parseBulkCsv(text: string, kind: BulkSheetKind = 'tour'): BulkRow[] {
   const lines = text.trim().split(/\r?\n/).filter(Boolean)
   if (lines.length === 0) return []
 
   const firstCols = parseCsvLine(lines[0])
-  const { hasHeader, nameIdx, linkIdx, categoryIdx } = resolveColumns(firstCols)
-  const dataLines = hasHeader ? lines.slice(1) : lines
-
-  let resolvedNameIdx = nameIdx
-  let resolvedLinkIdx = linkIdx
-  let resolvedCategoryIdx = categoryIdx
-
-  if (!hasHeader) {
-    if (kind === 'video') {
-      resolvedCategoryIdx = 0
-      resolvedNameIdx = 1
-      resolvedLinkIdx = 2
-    } else {
-      resolvedNameIdx = 0
-      resolvedLinkIdx = 1
-      resolvedCategoryIdx = -1
-    }
-  }
-
+  const resolved = resolveColumns(firstCols)
+  const dataLines = resolved.hasHeader ? lines.slice(1) : lines
+  const indices = resolveIndices(resolved.hasHeader, kind, resolved)
   const dataRows = dataLines.map((line) => parseCsvLine(line))
+
   return rowsFromTable(
     dataRows,
-    resolvedNameIdx,
-    resolvedLinkIdx,
+    indices.nameIdx,
+    indices.linkIdx,
     kind,
-    resolvedCategoryIdx,
+    indices.categoryIdx,
+    indices.builderIdx,
+    indices.projectIdx,
+    indices.cityIdx,
   )
 }
 
@@ -172,31 +234,19 @@ export async function parseBulkFile(file: File, kind: BulkSheetKind = 'tour'): P
     if (matrix.length === 0) throw new Error('Sheet is empty')
 
     const headerRow = matrix[0].map((c) => String(c))
-    const { hasHeader, nameIdx, linkIdx, categoryIdx } = resolveColumns(headerRow)
-    const dataRows = hasHeader ? matrix.slice(1) : matrix
-
-    let resolvedNameIdx = nameIdx
-    let resolvedLinkIdx = linkIdx
-    let resolvedCategoryIdx = categoryIdx
-
-    if (!hasHeader) {
-      if (kind === 'video') {
-        resolvedCategoryIdx = 0
-        resolvedNameIdx = 1
-        resolvedLinkIdx = 2
-      } else {
-        resolvedNameIdx = 0
-        resolvedLinkIdx = 1
-        resolvedCategoryIdx = -1
-      }
-    }
+    const resolved = resolveColumns(headerRow)
+    const dataRows = resolved.hasHeader ? matrix.slice(1) : matrix
+    const indices = resolveIndices(resolved.hasHeader, kind, resolved)
 
     return rowsFromTable(
       dataRows.map((row) => row.map((c) => String(c))),
-      resolvedNameIdx,
-      resolvedLinkIdx,
+      indices.nameIdx,
+      indices.linkIdx,
       kind,
-      resolvedCategoryIdx,
+      indices.categoryIdx,
+      indices.builderIdx,
+      indices.projectIdx,
+      indices.cityIdx,
     )
   }
 

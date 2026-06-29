@@ -19,14 +19,13 @@ function isBulkRow(value: unknown): value is BulkRow {
   return typeof row.name === 'string' && typeof row.link === 'string'
 }
 
-function isBulkBatch(value: unknown): value is BulkBatch {
+function isBulkBatch(value: unknown): value is BulkBatch & { cityId?: string } {
   if (!value || typeof value !== 'object') return false
-  const batch = value as BulkBatch
+  const batch = value as BulkBatch & { cityId?: string }
   return (
     typeof batch.id === 'string' &&
     (batch.fileName === null || typeof batch.fileName === 'string') &&
     (batch.stateId === undefined || typeof batch.stateId === 'string') &&
-    (batch.cityId === undefined || typeof batch.cityId === 'string') &&
     Array.isArray(batch.rows) &&
     batch.rows.every(isBulkRow)
   )

@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { registerLenis } from '../lib/lenisControl'
 
 export function useLenis() {
   useEffect(() => {
@@ -22,11 +23,13 @@ export function useLenis() {
       gsap.registerPlugin(ScrollTrigger)
 
       const instance = new Lenis({
-        duration: 1.2,
+        duration: 1,
         easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         smoothWheel: true,
+        lerp: 0.1,
       })
       lenis = instance
+      registerLenis(instance)
 
       instance.on('scroll', ScrollTrigger.update)
 
@@ -71,6 +74,7 @@ export function useLenis() {
       }
       cancelAnimationFrame(rafId)
       lenis?.destroy()
+      registerLenis(null)
       import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
         ScrollTrigger.scrollerProxy(document.documentElement, {})
         ScrollTrigger.getAll().forEach((t) => t.kill())

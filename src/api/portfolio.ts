@@ -2,7 +2,7 @@ import { metroCities } from '../data/metroCities'
 import { METRO_CITY_STATES } from '../data/indianStates'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { fetchPortfolioPageFromSupabase } from './portfolio.supabase'
-import type { PortfolioPage, PortfolioQuery } from '../types/portfolio'
+import type { PortfolioPage, PortfolioQuery, PortfolioViewerPayload } from '../types/portfolio'
 
 export const PORTFOLIO_PAGE_SIZE = 15
 
@@ -56,4 +56,13 @@ export async function fetchPortfolioPage(query: PortfolioQuery): Promise<Portfol
   }
 
   return fetchPortfolioPageEmpty(query)
+}
+
+export async function fetchPortfolioViewer(itemId: string): Promise<PortfolioViewerPayload | null> {
+  if (!isSupabaseConfigured()) {
+    return null
+  }
+
+  const { fetchPortfolioViewerFromSupabase } = await import('./portfolio.supabase')
+  return fetchPortfolioViewerFromSupabase(itemId)
 }

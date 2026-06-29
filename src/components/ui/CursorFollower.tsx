@@ -7,29 +7,51 @@ export function CursorFollower() {
   const reducedMotion = usePrefersReducedMotion()
   const [pos, setPos] = useState({ x: 0, y: 0 })
   const [hovering, setHovering] = useState(false)
+  const [hidden, setHidden] = useState(false)
 
   useEffect(() => {
     if (!isDesktop || reducedMotion) return
 
-    const move = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY })
+    let frame = 0
+    let nextPos = { x: 0, y: 0 }
+
+    const move = (e: MouseEvent) => {
+      nextPos = { x: e.clientX, y: e.clientY }
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        setPos(nextPos)
+        frame = 0
+      })
+    }
 
     const onOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement
       setHovering(!!target.closest('a, button, [data-cursor="pointer"]'))
     }
 
-    window.addEventListener('mousemove', move)
-    document.addEventListener('mouseover', onOver)
+    const syncModalState = () => {
+      setHidden(document.body.classList.contains('portfolio-modal-open'))
+    }
+
+    syncModalState()
+    const observer = new MutationObserver(syncModalState)
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+
+    window.addEventListener('mousemove', move, { passive: true })
+    document.addEventListener('mouseover', onOver, { passive: true })
+
     return () => {
+      if (frame) cancelAnimationFrame(frame)
+      observer.disconnect()
       window.removeEventListener('mousemove', move)
       document.removeEventListener('mouseover', onOver)
     }
   }, [isDesktop, reducedMotion])
 
-  if (!isDesktop || reducedMotion) return null
+  if (!isDesktop || reducedMotion || hidden) return null
 
   return (
-    <>
+    <div data-cursor-follower aria-hidden>
       <motion.div
         className="fixed top-0 left-0 w-2 h-2 rounded-full bg-cyan pointer-events-none z-[9999] mix-blend-difference"
         animate={{ x: pos.x - 4, y: pos.y - 4, scale: hovering ? 0.5 : 1 }}
@@ -45,6 +67,6 @@ export function CursorFollower() {
         }}
         transition={{ type: 'spring', stiffness: 150, damping: 20, mass: 0.8 }}
       />
-    </>
+    </div>
   )
 }

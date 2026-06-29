@@ -53,8 +53,8 @@ const PANEL_COPY: Record<
   video: {
     sheetHint:
       'For each sheet: choose a state, then attach your YouTube CSV (Category + Title + Youtube Link).',
-    fileHint: 'Category + Title + Youtube Link columns',
-    thumbNote: 'Thumbnails: plays video, fullscreen, waits 10s, captures frame.',
+    fileHint: 'Builder + Project + City + Category + Youtube Link columns',
+    thumbNote: 'Thumbnails: full-width 1920×1080 capture from video/canvas after play.',
   },
 }
 
@@ -456,11 +456,14 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                 </p>
                 <ul className="space-y-1 text-sm">
                   {batch.rows.slice(0, 5).map((row) => (
-                    <li key={row.link} className="flex gap-3 truncate">
-                      <span className="font-medium text-navy shrink-0 max-w-[40%] truncate">
-                        {row.name}
+                    <li key={row.link} className="flex gap-3 truncate text-sm">
+                      <span className="text-slate shrink-0 max-w-[28%] truncate">
+                        {row.builderName || '—'}
                       </span>
-                      <span className="text-slate truncate">{row.link}</span>
+                      <span className="font-medium text-navy shrink-0 max-w-[32%] truncate">
+                        {row.projectName || row.name}
+                      </span>
+                      <span className="text-slate truncate">{row.cityLabel || row.link}</span>
                     </li>
                   ))}
                   {batch.rows.length > 5 && (

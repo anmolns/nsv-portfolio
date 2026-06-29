@@ -5,12 +5,11 @@ import { getPortfolioThumbnail } from '../../lib/portfolioMedia'
 import {
   deleteTour,
   duplicateTour,
-  fetchAdminFilterCities,
   fetchAdminTours,
   reorderTours,
 } from '../api/adminPortfolio'
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
-import type { CityWithCount, PortfolioItemRow } from '../types'
+import type { PortfolioItemRow } from '../types'
 
 type MediaFilter = 'all' | 'video' | 'virtual-tour'
 type StatusFilter = 'all' | 'published' | 'draft'
@@ -18,11 +17,10 @@ type StatusFilter = 'all' | 'published' | 'draft'
 export function ToursPage() {
   const navigate = useNavigate()
   const [tours, setTours] = useState<PortfolioItemRow[]>([])
-  const [cities, setCities] = useState<CityWithCount[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [cityFilter, setCityFilter] = useState('all')
+  const [stateFilter, setStateFilter] = useState('all')
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -32,11 +30,8 @@ export function ToursPage() {
 
   const load = () => {
     setLoading(true)
-    Promise.all([fetchAdminTours(), fetchAdminFilterCities()])
-      .then(([tourRows, cityRows]) => {
-        setTours(tourRows)
-        setCities(cityRows)
-      })
+    fetchAdminTours()
+      .then(setTours)
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load tours'))
       .finally(() => setLoading(false))
   }
@@ -48,28 +43,37 @@ export function ToursPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return tours.filter((t) => {
-      if (q && !t.name.toLowerCase().includes(q) && !t.id.toLowerCase().includes(q)) {
+      const projectName = (t.project_name ?? t.name).toLowerCase()
+      const builder = (t.builder_name ?? '').toLowerCase()
+      const city = (t.city_label ?? t.cities?.name ?? '').toLowerCase()
+      if (
+        q &&
+        !projectName.includes(q) &&
+        !builder.includes(q) &&
+        !city.includes(q) &&
+        !t.id.toLowerCase().includes(q)
+      ) {
         return false
       }
-      if (cityFilter === 'none' && t.city_id) return false
-      if (cityFilter !== 'all' && cityFilter !== 'none' && t.city_id !== cityFilter) return false
+      if (stateFilter === 'none' && t.state) return false
+      if (stateFilter !== 'all' && stateFilter !== 'none' && t.state !== stateFilter) return false
       if (mediaFilter !== 'all' && t.media_type !== mediaFilter) return false
       if (statusFilter === 'published' && !t.is_published) return false
       if (statusFilter === 'draft' && t.is_published) return false
       return true
     })
-  }, [tours, search, cityFilter, mediaFilter, statusFilter])
+  }, [tours, search, stateFilter, mediaFilter, statusFilter])
 
-  const noCityCount = useMemo(() => tours.filter((t) => !t.city_id).length, [tours])
+  const noStateCount = useMemo(() => tours.filter((t) => !t.state).length, [tours])
 
-  const filterCities = useMemo(
-    () => cities.filter((c) => c.is_active || c.tour_count > 0).sort((a, b) => a.name.localeCompare(b.name)),
-    [cities],
-  )
+  const filterStates = useMemo(() => {
+    const fromData = new Set(tours.map((t) => t.state).filter(Boolean) as string[])
+    return [...fromData].sort((a, b) => a.localeCompare(b))
+  }, [tours])
 
   const canReorder =
     !search.trim() &&
-    cityFilter === 'all' &&
+    stateFilter === 'all' &&
     mediaFilter === 'all' &&
     statusFilter === 'all'
 
@@ -157,23 +161,21 @@ export function ToursPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name or slug…"
+            placeholder="Search builder, project, city, or slug…"
             className="rounded-xl border border-border bg-off-white px-4 py-2.5 text-sm text-navy focus:outline-none focus:border-cyan sm:col-span-2 lg:col-span-1"
           />
           <select
-            value={cityFilter}
-            onChange={(e) => setCityFilter(e.target.value)}
+            value={stateFilter}
+            onChange={(e) => setStateFilter(e.target.value)}
             className={selectClass}
           >
-            <option value="all">All cities</option>
-            {noCityCount > 0 && (
-              <option value="none">No city ({noCityCount})</option>
+            <option value="all">All states</option>
+            {noStateCount > 0 && (
+              <option value="none">No state ({noStateCount})</option>
             )}
-            {filterCities.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-                {c.tour_count > 0 ? ` (${c.tour_count})` : ''}
-                {!c.is_active ? ' · hidden' : ''}
+            {filterStates.map((state) => (
+              <option key={state} value={state}>
+                {state}
               </option>
             ))}
           </select>
@@ -213,16 +215,19 @@ export function ToursPage() {
                     Preview
                   </th>
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider">
-                    Name
+                    Project
                   </th>
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider hidden sm:table-cell">
-                    City
+                    Builder
                   </th>
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider hidden md:table-cell">
-                    Type
+                    State
                   </th>
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider hidden lg:table-cell">
-                    Category
+                    City
+                  </th>
+                  <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider hidden xl:table-cell">
+                    Type
                   </th>
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider">
                     Status
@@ -265,21 +270,26 @@ export function ToursPage() {
                       </div>
                     </td>
                     <td className="px-3 py-4">
-                      <p className="font-semibold text-navy">{tour.name}</p>
+                      <p className="font-semibold text-navy">
+                        {tour.project_name?.trim() || tour.name}
+                      </p>
                       <p className="text-xs text-slate-light mt-0.5 truncate max-w-[180px]">
                         {tour.id}
                       </p>
                     </td>
                     <td className="px-3 py-4 text-slate hidden sm:table-cell">
-                      {tour.cities?.name ?? '—'}
+                      {tour.builder_name ?? '—'}
                     </td>
-                    <td className="px-3 py-4 hidden md:table-cell">
+                    <td className="px-3 py-4 text-slate hidden md:table-cell">
+                      {tour.state ?? '—'}
+                    </td>
+                    <td className="px-3 py-4 text-slate hidden lg:table-cell">
+                      {tour.city_label ?? tour.cities?.name ?? '—'}
+                    </td>
+                    <td className="px-3 py-4 hidden xl:table-cell">
                       <span className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-navy/5 text-navy">
                         {tour.media_type === 'video' ? 'Video' : 'VR'}
                       </span>
-                    </td>
-                    <td className="px-3 py-4 text-slate hidden lg:table-cell">
-                      {tour.media_type === 'video' ? tour.category ?? '—' : '—'}
                     </td>
                     <td className="px-3 py-4">
                       <span
@@ -310,7 +320,9 @@ export function ToursPage() {
                       <button
                         type="button"
                         disabled={deletingId === tour.id}
-                        onClick={() => handleDelete(tour.id, tour.name)}
+                        onClick={() =>
+                          handleDelete(tour.id, tour.project_name?.trim() || tour.name)
+                        }
                         className="text-red-500 font-semibold hover:text-red-600 disabled:opacity-50"
                       >
                         {deletingId === tour.id ? '…' : 'Delete'}
