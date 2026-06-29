@@ -19,7 +19,7 @@ export function BulkUploadPage() {
     <>
       <AdminPageHeader
         title="Bulk upload"
-        subtitle="Import virtual tours or YouTube videos city-wise with auto-generated thumbnails"
+        subtitle="Import virtual tours or YouTube videos state-wise with auto-generated thumbnails"
         action={
           <Link
             to="/admin/tours"

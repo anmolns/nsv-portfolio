@@ -26,7 +26,7 @@ interface BulkImportJob {
 
 interface RunBulkImportParams {
   accessToken: string
-  batches: { cityId: string; cityName: string; fileName: string; rows: BulkRow[] }[]
+  batches: { state: string; fileName: string; rows: BulkRow[] }[]
   skipExisting: boolean
   mediaType: BulkMediaType
 }
@@ -77,11 +77,11 @@ export function BulkImportProvider({ children }: { children: ReactNode }) {
       for (const batch of batches) {
         if (abortRef.current) break
 
-        const batchLabel = `${batch.fileName} · ${batch.cityName}`
+        const batchLabel = `${batch.fileName} · ${batch.state}`
 
         await runBulkImport(
           accessToken,
-          batch.cityId,
+          batch.state,
           batch.rows,
           skipExisting,
           mediaType,

@@ -4,7 +4,6 @@ export interface BulkBatch {
   id: string
   fileName: string | null
   stateId: string
-  cityId: string
   rows: BulkRow[]
 }
 
@@ -13,7 +12,6 @@ export function createEmptyBatch(): BulkBatch {
     id: crypto.randomUUID(),
     fileName: null,
     stateId: '',
-    cityId: '',
     rows: [],
   }
 }
@@ -23,5 +21,5 @@ export function totalBatchRows(batches: BulkBatch[]): number {
 }
 
 export function batchIsReady(batch: BulkBatch): boolean {
-  return Boolean(batch.cityId && batch.fileName && batch.rows.length > 0)
+  return Boolean(batch.stateId && batch.fileName && batch.rows.length > 0)
 }

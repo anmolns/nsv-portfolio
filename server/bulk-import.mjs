@@ -105,6 +105,40 @@ function withCategory(fields, category, categorySupported) {
   return { ...fields, category }
 }
 
+async function resolveCityIdForState(adminClient, state) {
+  const trimmed = state?.trim()
+  if (!trimmed) return null
+
+  const { data: bucket } = await adminClient
+    .from('cities')
+    .select('id')
+    .eq('name', trimmed)
+    .eq('state', trimmed)
+    .maybeSingle()
+  if (bucket) return bucket.id
+
+  const { data: lastCity } = await adminClient
+    .from('cities')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { data: created, error } = await adminClient
+    .from('cities')
+    .insert({
+      name: trimmed,
+      state: trimmed,
+      sort_order: (lastCity?.sort_order ?? 0) + 1,
+      is_active: true,
+    })
+    .select('id')
+    .single()
+
+  if (error) throw new Error(error.message)
+  return created.id
+}
+
 async function processBulkImport(req, res) {
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     sendJson(res, 503, {
@@ -129,9 +163,9 @@ async function processBulkImport(req, res) {
     return
   }
 
-  const { cityId, rows, skipExisting = true, mediaType = 'virtual-tour' } = body ?? {}
-  if (!cityId || !Array.isArray(rows) || rows.length === 0) {
-    sendJson(res, 400, { error: 'cityId and rows[] are required' })
+  const { state, rows, skipExisting = true, mediaType = 'virtual-tour' } = body ?? {}
+  if (!state?.trim() || !Array.isArray(rows) || rows.length === 0) {
+    sendJson(res, 400, { error: 'state and rows[] are required' })
     return
   }
 
@@ -154,6 +188,15 @@ async function processBulkImport(req, res) {
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
   const categorySupported = await detectCategoryColumn(adminClient)
+
+  let cityId
+  try {
+    cityId = await resolveCityIdForState(adminClient, state)
+  } catch (err) {
+    sendJson(res, 500, { error: `Could not resolve city for state: ${err.message}` })
+    return
+  }
+
   const existingSelect = categorySupported
     ? 'id, name, media_type, category'
     : 'id, name, media_type'

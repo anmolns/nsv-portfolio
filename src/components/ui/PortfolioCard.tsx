@@ -63,7 +63,7 @@ export function PortfolioCard({
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_110%,rgba(41,171,226,0.28),transparent_62%)]" />
 
             <div className="relative z-10 flex h-full min-h-0 flex-col items-center justify-center px-3 py-2 text-center sm:px-4 sm:py-3">
-              <h3 className="font-display line-clamp-3 min-h-0 w-full max-w-full shrink px-0.5 text-2xl font-extrabold leading-snug tracking-[-0.02em] text-balance sm:text-3xl lg:text-4xl">
+              <h3 className="font-display line-clamp-3 min-h-0 w-full max-w-full shrink px-0.5 text-lg font-extrabold leading-snug tracking-[-0.02em] text-balance sm:text-xl lg:text-2xl">
                 <span className="inline-block bg-gradient-to-b from-white via-white to-cyan-bright/90 bg-clip-text pb-1 text-transparent">
                   {entry.name}
                 </span>

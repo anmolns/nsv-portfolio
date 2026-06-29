@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 
-import { fetchAdminCities } from '../api/adminPortfolio'
-import { CityPicker } from '../components/CityPicker'
 import { AdminCard } from '../components/AdminLayout'
 import { INDIAN_STATES } from '../../data/indianStates'
 import { useAdminAuthContext } from '../context/AdminAuthContext'
@@ -26,7 +24,6 @@ import {
 } from '../lib/bulkUploadDraft'
 import { parseBulkFile } from '../lib/parseBulkSheet'
 import { isYoutubeLink } from '../../lib/portfolioLink'
-import type { CityRow } from '../types'
 import { cn } from '../../lib/utils'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -49,13 +46,13 @@ const PANEL_COPY: Record<
 > = {
   tour: {
     sheetHint:
-      'For each sheet: choose a location, then attach a CSV/Excel with Name + Link columns.',
+      'For each sheet: choose a state, then attach a CSV/Excel with Name + Link columns.',
     fileHint: 'Name + Link columns (virtual tour URLs)',
     thumbNote: 'Thumbnails: opens tour, pans viewer, captures frame.',
   },
   video: {
     sheetHint:
-      'For each sheet: choose a location, then attach your YouTube CSV (Category + Title + Youtube Link).',
+      'For each sheet: choose a state, then attach your YouTube CSV (Category + Title + Youtube Link).',
     fileHint: 'Category + Title + Youtube Link columns',
     thumbNote: 'Thumbnails: plays video, fullscreen, waits 10s, captures frame.',
   },
@@ -69,7 +66,6 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
   const batchesRef = useRef<BulkBatch[]>([])
   const skipExistingRef = useRef(true)
 
-  const [cities, setCities] = useState<CityRow[]>([])
   const [batches, setBatches] = useState<BulkBatch[]>(() => {
     const draft = readBulkUploadDraft(kind)
     if (draft?.batches.length) return draft.batches
@@ -79,7 +75,6 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
     () => readBulkUploadDraft(kind)?.skipExisting ?? true,
   )
   const [serverReady, setServerReady] = useState<boolean | null>(null)
-  const [loadingCities, setLoadingCities] = useState(true)
   const [parseError, setParseError] = useState<string | null>(null)
   const [parsingBatchId, setParsingBatchId] = useState<string | null>(null)
 
@@ -87,11 +82,6 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
   skipExistingRef.current = skipExisting
 
   useEffect(() => {
-    fetchAdminCities()
-      .then(setCities)
-      .catch(() => setParseError('Could not load cities'))
-      .finally(() => setLoadingCities(false))
-
     checkBulkImportServer().then(setServerReady)
   }, [])
 
@@ -189,8 +179,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
       mediaType,
       skipExisting,
       batches: readyBatches.map((batch) => ({
-        cityId: batch.cityId,
-        cityName: cities.find((c) => c.id === batch.cityId)?.name ?? 'Unknown',
+        state: batch.stateId,
         fileName: batch.fileName ?? 'sheet',
         rows: batch.rows,
       })),
@@ -259,8 +248,8 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
         <div className="space-y-4">
           {batches.map((batch, index) => {
             const isParsing = parsingBatchId === batch.id
-            const locationMissing = batch.fileName && !batch.cityId
-            const fileMissing = batch.cityId && !batch.fileName
+            const locationMissing = batch.fileName && !batch.stateId
+            const fileMissing = batch.stateId && !batch.fileName
 
             return (
               <div
@@ -295,10 +284,8 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                     </label>
                     <select
                       value={batch.stateId}
-                      disabled={isImporting || loadingCities}
-                      onChange={(e) =>
-                        updateBatch(batch.id, { stateId: e.target.value, cityId: '' })
-                      }
+                      disabled={isImporting}
+                      onChange={(e) => updateBatch(batch.id, { stateId: e.target.value })}
                       className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 disabled:opacity-60"
                     >
                       <option value="">Select state…</option>
@@ -309,17 +296,6 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                       ))}
                     </select>
                   </div>
-
-                  <CityPicker
-                    label="Location"
-                    cities={cities}
-                    value={batch.cityId}
-                    disabled={isImporting || loadingCities}
-                    onChange={(cityId) => updateBatch(batch.id, { cityId })}
-                    onCitiesChange={setCities}
-                    stateFilter={batch.stateId || null}
-                    createState={batch.stateId || null}
-                  />
 
                   <div>
                     <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
@@ -346,10 +322,10 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                 </div>
 
                 {locationMissing && (
-                  <p className="text-xs text-amber-700">Select or create a location for this sheet.</p>
+                  <p className="text-xs text-amber-700">Select a state for this sheet.</p>
                 )}
                 {fileMissing && (
-                  <p className="text-xs text-amber-700">Attach a sheet file for this location.</p>
+                  <p className="text-xs text-amber-700">Attach a sheet file for this state.</p>
                 )}
               </div>
             )
@@ -358,7 +334,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
 
         <button
           type="button"
-          disabled={isImporting || loadingCities}
+          disabled={isImporting}
           onClick={addSheet}
           className={cn(
             'w-full rounded-xl border border-dashed border-border py-3 text-sm font-semibold text-cyan',
@@ -473,29 +449,26 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
             <h2 className="font-display text-lg font-bold text-navy">Preview</h2>
           </div>
           <div className="max-h-80 overflow-y-auto divide-y divide-border">
-            {readyBatches.map((batch) => {
-              const cityName = cities.find((c) => c.id === batch.cityId)?.name ?? '—'
-              return (
-                <div key={batch.id} className="p-4 sm:px-6">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate mb-2">
-                    {cityName} ← {batch.fileName}
-                  </p>
-                  <ul className="space-y-1 text-sm">
-                    {batch.rows.slice(0, 5).map((row) => (
-                      <li key={row.link} className="flex gap-3 truncate">
-                        <span className="font-medium text-navy shrink-0 max-w-[40%] truncate">
-                          {row.name}
-                        </span>
-                        <span className="text-slate truncate">{row.link}</span>
-                      </li>
-                    ))}
-                    {batch.rows.length > 5 && (
-                      <li className="text-xs text-slate pt-1">+ {batch.rows.length - 5} more</li>
-                    )}
-                  </ul>
-                </div>
-              )
-            })}
+            {readyBatches.map((batch) => (
+              <div key={batch.id} className="p-4 sm:px-6">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate mb-2">
+                  {batch.stateId} ← {batch.fileName}
+                </p>
+                <ul className="space-y-1 text-sm">
+                  {batch.rows.slice(0, 5).map((row) => (
+                    <li key={row.link} className="flex gap-3 truncate">
+                      <span className="font-medium text-navy shrink-0 max-w-[40%] truncate">
+                        {row.name}
+                      </span>
+                      <span className="text-slate truncate">{row.link}</span>
+                    </li>
+                  ))}
+                  {batch.rows.length > 5 && (
+                    <li className="text-xs text-slate pt-1">+ {batch.rows.length - 5} more</li>
+                  )}
+                </ul>
+              </div>
+            ))}
           </div>
         </AdminCard>
       )}
