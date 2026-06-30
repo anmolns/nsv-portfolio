@@ -63,6 +63,35 @@ export function isYoutubeLink(url) {
   }
 }
 
+export function youtubeVideoIdFromUrl(url) {
+  try {
+    const u = new URL(url.trim())
+    const host = u.hostname.toLowerCase()
+
+    if (host.includes('youtu.be')) {
+      return u.pathname.replace(/^\//, '').split('/')[0] || null
+    }
+
+    if (host.includes('youtube.com')) {
+      const v = u.searchParams.get('v')
+      if (v) return v
+      const shorts = u.pathname.match(/\/shorts\/([^/]+)/)
+      if (shorts?.[1]) return shorts[1]
+      const embed = u.pathname.match(/\/embed\/([^/]+)/)
+      if (embed?.[1]) return embed[1]
+    }
+  } catch {
+    // fall through
+  }
+  return null
+}
+
+/** Always open the watch page — embed URLs cause Error 150 in automated capture. */
+export function youtubeWatchUrl(url) {
+  const id = youtubeVideoIdFromUrl(url)
+  return id ? `https://www.youtube.com/watch?v=${id}` : url.trim()
+}
+
 /** YouTube URLs are always videos, regardless of which bulk tab was used. */
 export function resolveMediaTypeFromLink(link, requestedMediaType) {
   if (isYoutubeLink(link)) return 'video'

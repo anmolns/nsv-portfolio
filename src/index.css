@@ -183,6 +183,14 @@
     animation: portfolio-modal-rise-in 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  .portfolio-modal-media--tour {
+    min-height: min(72vh, 780px);
+  }
+
+  .portfolio-modal-media--video {
+    min-height: 0;
+  }
+
   .portfolio-modal {
     animation: portfolio-modal-fade-in 0.2s ease-out;
   }

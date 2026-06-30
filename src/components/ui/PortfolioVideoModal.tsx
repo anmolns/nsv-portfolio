@@ -74,7 +74,7 @@ export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps
 
       <div
         className={`portfolio-modal-panel relative z-10 flex w-full flex-col overflow-hidden ${
-          isVirtualTour ? 'max-w-6xl h-[min(90vh,900px)]' : 'max-w-5xl'
+          isVirtualTour ? 'max-w-6xl h-[min(92vh,920px)]' : 'max-w-5xl'
         }`}
         data-lenis-prevent
         role="dialog"
@@ -104,11 +104,17 @@ export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps
           </button>
         </div>
 
-        <div className={`relative w-full bg-[#0a0a0a] ${isVirtualTour ? 'min-h-0 flex-1' : ''}`}>
+        <div
+          className={
+            isVirtualTour
+              ? 'portfolio-modal-media portfolio-modal-media--tour relative min-h-0 w-full flex-1 bg-[#0a0a0a]'
+              : 'portfolio-modal-media portfolio-modal-media--video relative w-full bg-[#0a0a0a]'
+          }
+        >
           {viewerError ? (
             <div
               className={`flex items-center justify-center px-6 text-center text-sm text-white/70 ${
-                isVirtualTour ? 'min-h-[50vh] h-full' : 'aspect-video'
+                isVirtualTour ? 'absolute inset-0' : 'aspect-video'
               }`}
             >
               Unable to load this project. Please try again later.
@@ -135,19 +141,27 @@ export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps
                   autoPlay
                   preload="metadata"
                   onLoadedData={() => setMediaReady(true)}
-                  className={`w-full bg-black object-contain transition-opacity duration-200 ${
-                    isVirtualTour ? 'h-full min-h-[50vh]' : 'aspect-video'
-                  } ${mediaReady ? 'opacity-100' : 'opacity-0'}`}
+                  className={`w-full bg-black object-contain transition-opacity duration-200 aspect-video ${
+                    mediaReady ? 'opacity-100' : 'opacity-0'
+                  }`}
                 />
               ) : viewer ? (
                 <iframe
                   key={entry.id}
                   src={viewer.src}
                   title={project}
-                  onLoad={() => setMediaReady(true)}
-                  className={`w-full border-0 bg-black transition-opacity duration-200 ${
-                    isVirtualTour ? 'h-full min-h-[50vh]' : 'aspect-video'
-                  } ${mediaReady ? 'opacity-100' : 'opacity-0'}`}
+                  onLoad={() => {
+                    window.setTimeout(() => setMediaReady(true), isVirtualTour ? 400 : 0)
+                  }}
+                  className={
+                    isVirtualTour
+                      ? `absolute inset-0 h-full w-full border-0 bg-[#0a0a0a] transition-opacity duration-200 ${
+                          mediaReady ? 'opacity-100' : 'opacity-0'
+                        }`
+                      : `w-full border-0 bg-black aspect-video transition-opacity duration-200 ${
+                          mediaReady ? 'opacity-100' : 'opacity-0'
+                        }`
+                  }
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking"
                   allowFullScreen
                   referrerPolicy="strict-origin-when-cross-origin"

@@ -1,9 +1,12 @@
 /**
- * Delete portfolio videos (DB rows) and clean up thumbnails.
+ * Delete portfolio videos (DB rows) and their thumbnails.
  *
  * Usage:
  *   node --env-file=.env.local scripts/delete-all-videos.mjs
+ *     → deletes all video rows + their thumbnails only
+ *
  *   node --env-file=.env.local scripts/delete-all-videos.mjs --orphans-only
+ *     → removes storage files not linked in DB
  */
 import { createClient } from '@supabase/supabase-js'
 
@@ -94,52 +97,52 @@ async function cleanupOrphanThumbnails() {
   return removed
 }
 
-if (!orphansOnly) {
+async function deleteAllVideos() {
   const { data: videos, error } = await admin
     .from('portfolio_items')
     .select('id, name, thumbnail_path')
     .eq('media_type', 'video')
 
-  if (error) {
-    console.error('Failed to load videos:', error.message)
-    process.exit(1)
-  }
+  if (error) throw new Error(error.message)
 
   if (!videos?.length) {
     console.log('No videos in database.')
-  } else {
-    console.log(`Found ${videos.length} video(s). Deleting…`)
-
-    const thumbPaths = videos
-      .map((v) => normalizeThumbPath(v.thumbnail_path))
-      .filter(Boolean)
-
-    if (thumbPaths.length > 0) {
-      try {
-        const removed = await deleteStoragePaths(thumbPaths)
-        console.log(`Removed ${removed} video thumbnail(s) from storage.`)
-      } catch (err) {
-        console.warn('Storage cleanup warning:', err.message)
-      }
-    }
-
-    const { error: deleteError } = await admin
-      .from('portfolio_items')
-      .delete()
-      .eq('media_type', 'video')
-
-    if (deleteError) {
-      console.error('Failed to delete videos:', deleteError.message)
-      process.exit(1)
-    }
-
-    console.log(`Deleted ${videos.length} video(s) from portfolio_items.`)
+    return
   }
+
+  console.log(`Found ${videos.length} video(s). Deleting…`)
+
+  const thumbPaths = videos
+    .map((v) => normalizeThumbPath(v.thumbnail_path))
+    .filter(Boolean)
+
+  if (thumbPaths.length > 0) {
+    try {
+      const removed = await deleteStoragePaths(thumbPaths)
+      console.log(`Removed ${removed} video thumbnail(s) from storage.`)
+    } catch (err) {
+      console.warn('Storage cleanup warning:', err.message)
+    }
+  }
+
+  const { error: deleteError } = await admin
+    .from('portfolio_items')
+    .delete()
+    .eq('media_type', 'video')
+
+  if (deleteError) throw new Error(deleteError.message)
+
+  console.log(`Deleted ${videos.length} video(s) from portfolio_items.`)
 }
 
 try {
+  if (!orphansOnly) {
+    await deleteAllVideos()
+  }
   await cleanupOrphanThumbnails()
 } catch (err) {
-  console.error(err.message)
+  console.error(err instanceof Error ? err.message : err)
   process.exit(1)
 }
+
+console.log('Done.')

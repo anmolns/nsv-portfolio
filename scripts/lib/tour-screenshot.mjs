@@ -30,8 +30,17 @@ async function nudgeTourView(page, options) {
 }
 
 export async function launchTourBrowser() {
-  const browser = await chromium.launch({ headless: true })
-  const page = await browser.newPage({ viewport: SCREENSHOT_VIEWPORT })
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--disable-blink-features=AutomationControlled', '--no-sandbox'],
+  })
+  const context = await browser.newContext({
+    viewport: SCREENSHOT_VIEWPORT,
+    userAgent:
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    locale: 'en-US',
+  })
+  const page = await context.newPage()
   return { browser, page }
 }
 
