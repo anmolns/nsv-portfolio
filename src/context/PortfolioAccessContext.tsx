@@ -44,7 +44,6 @@ export function PortfolioAccessProvider({ children }: { children: ReactNode }) {
   const [activeEntry, setActiveEntry] = useState<PortfolioEntry | null>(null)
   const timerStartedRef = useRef(false)
 
-  // TEMP: validation disabled — re-enable via PORTFOLIO_ACCESS_VALIDATION_ENABLED
   useEffect(() => {
     if (!PORTFOLIO_ACCESS_VALIDATION_ENABLED) return
     if (isValidated || timerStartedRef.current) return

@@ -92,11 +92,12 @@ export async function sendEmailOtp(
   }
 
   const firstName = name.trim().split(/\s+/)[0] || 'there'
-  const projectLine = projectName?.trim()
-    ? `<p style="margin:16px 0 0;color:#334155;font-size:14px;line-height:1.5;">You requested access to view <strong>${escapeHtml(projectLine)}</strong> on the NS Ventures portfolio.</p>`
+  const trimmedProject = projectName?.trim() ?? ''
+  const projectLine = trimmedProject
+    ? `<p style="margin:16px 0 0;color:#334155;font-size:14px;line-height:1.5;">You requested access to view <strong>${escapeHtml(trimmedProject)}</strong> on the NS Ventures portfolio.</p>`
     : ''
-  const projectText = projectLine
-    ? ` You requested access to view ${projectName?.trim()} on the NS Ventures portfolio.`
+  const projectText = trimmedProject
+    ? ` You requested access to view ${trimmedProject} on the NS Ventures portfolio.`
     : ''
 
   const res = await fetch('https://api.resend.com/emails', {
