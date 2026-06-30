@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js'
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
 
 export interface PortfolioOtpSendPayload {
@@ -22,20 +23,39 @@ export interface PortfolioOtpVerifyResult {
   email: string
   phone: string
   verifiedAt: string
+  accessToken: string
+  expiresAt: string
+  expiresIn: number
 }
 
 type EdgeOk<T> = { ok: true } & T
 type EdgeErr = { ok: false; error: string }
 
-function parseEdgeError(error: unknown, data: unknown): string {
+async function parseEdgeError(error: unknown, data: unknown): Promise<string> {
   if (data && typeof data === 'object' && 'error' in data) {
     const msg = (data as EdgeErr).error
     if (typeof msg === 'string' && msg.trim()) return msg
   }
-  if (error && typeof error === 'object' && 'message' in error) {
-    return String((error as { message: string }).message)
+
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const body = (await error.context.json()) as EdgeErr | null
+      if (body?.error?.trim()) return body.error
+    } catch {
+      // ignore JSON parse errors
+    }
   }
-  return 'Request failed'
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = String((error as { message: string }).message)
+    if (message && !message.includes('non-2xx')) return message
+  }
+
+  return 'Verification service unavailable. Check edge function secrets and try again.'
+}
+
+function isEdgeOk(data: unknown): data is EdgeOk<Record<string, unknown>> {
+  return Boolean(data && typeof data === 'object' && (data as EdgeOk<unknown>).ok === true)
 }
 
 export async function sendPortfolioEmailOtp(
@@ -50,11 +70,11 @@ export async function sendPortfolioEmailOtp(
     body: payload,
   })
 
-  if (error || !data || !(data as EdgeOk<PortfolioOtpSendResult>).ok) {
-    throw new Error(parseEdgeError(error, data))
+  if (!isEdgeOk(data)) {
+    throw new Error(await parseEdgeError(error, data))
   }
 
-  const result = data as EdgeOk<PortfolioOtpSendResult>
+  const result = data as unknown as EdgeOk<PortfolioOtpSendResult>
   return {
     expiresIn: result.expiresIn,
     emailMasked: result.emailMasked,
@@ -73,10 +93,10 @@ export async function verifyPortfolioEmailOtp(
     body: payload,
   })
 
-  if (error || !data || !(data as { ok?: boolean }).ok) {
-    throw new Error(parseEdgeError(error, data))
+  if (!isEdgeOk(data)) {
+    throw new Error(await parseEdgeError(error, data))
   }
 
-  const result = data as EdgeOk<{ profile: PortfolioOtpVerifyResult }>
+  const result = data as unknown as EdgeOk<{ profile: PortfolioOtpVerifyResult }>
   return result.profile
 }

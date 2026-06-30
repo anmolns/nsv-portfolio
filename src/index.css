@@ -287,15 +287,31 @@
   }
 
   .portfolio-access-gate-backdrop {
-    background: rgba(0, 20, 40, 0.55);
+    background: rgba(0, 14, 28, 0.72);
+    backdrop-filter: blur(4px);
   }
 
   .portfolio-access-gate-panel {
-    border-radius: 1rem;
+    border-radius: 1.25rem;
     background: #ffffff;
-    border: 1px solid rgba(0, 45, 84, 0.08);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
-    animation: portfolio-modal-rise-in 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid rgba(0, 45, 84, 0.1);
+    box-shadow:
+      0 24px 64px rgba(0, 20, 40, 0.22),
+      0 8px 24px rgba(0, 20, 40, 0.1);
+    animation: portfolio-modal-rise-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .portfolio-access-gate-header {
+    background: linear-gradient(135deg, #002d54 0%, #003d6e 55%, #004a82 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .portfolio-callback-modal {
+    animation: portfolio-modal-fade-in 0.18s ease-out;
+  }
+
+  .portfolio-otp-cell {
+    font-variant-numeric: tabular-nums;
   }
 
   .portfolio-access-gate {

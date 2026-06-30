@@ -27,6 +27,12 @@ const ProjectInquiryModal = lazy(() =>
   })),
 )
 
+const PortfolioCallbackModal = lazy(() =>
+  import('./components/ui/PortfolioCallbackModal').then((m) => ({
+    default: m.PortfolioCallbackModal,
+  })),
+)
+
 function DeferredCursorFollower() {
   const [ready, setReady] = useState(false)
 
@@ -58,6 +64,7 @@ export default function PublicApp() {
   useLenis()
 
   const [inquiryOpen, setInquiryOpen] = useState(false)
+  const [callbackOpen, setCallbackOpen] = useState(false)
 
   return (
     <PortfolioAccessProvider>
@@ -70,7 +77,7 @@ export default function PublicApp() {
 
       <DeferredCursorFollower />
 
-      <Navbar onInquiryClick={() => setInquiryOpen(true)} />
+      <Navbar onCallbackClick={() => setCallbackOpen(true)} />
 
       <main id="main-content">
         <Hero />
@@ -88,6 +95,12 @@ export default function PublicApp() {
       {inquiryOpen && (
         <Suspense fallback={null}>
           <ProjectInquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
+        </Suspense>
+      )}
+
+      {callbackOpen && (
+        <Suspense fallback={null}>
+          <PortfolioCallbackModal onClose={() => setCallbackOpen(false)} />
         </Suspense>
       )}
     </PortfolioAccessProvider>

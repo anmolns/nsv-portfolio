@@ -12,20 +12,21 @@
 8. **SQL Editor** → run `supabase/migrations/008_hide_portfolio_links.sql` (hide links from public API)
 9. **SQL Editor** → run `supabase/migrations/009_portfolio_whatsapp_otp.sql` (OTP challenges table)
 10. **SQL Editor** → run `supabase/migrations/010_portfolio_otp_email_index.sql` (email lookup index)
-11. Add `.env.local`:
+11. **SQL Editor** → run `supabase/migrations/011_protect_portfolio_viewer.sql` (links only via session token)
+12. Add `.env.local`:
 
 ```env
 VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-12. Restart `npm run dev`
+13. Restart `npm run dev`
 
 ---
 
-## Step 1b — Portfolio email OTP (Resend)
+## Step 1b — Portfolio email OTP + session (Resend)
 
-OTP is sent via **[Resend](https://resend.com)** in Supabase Edge Functions. No OTP logic runs in the browser. (WhatsApp/WATI is on hold.)
+OTP is sent via **[Resend](https://resend.com)**. After verification, the server issues a **30-day session token** (JWT). Video/VR links are only returned by the `portfolio-viewer` edge function when a valid token is sent. (WhatsApp/WATI is on hold.)
 
 ### A. Resend setup
 
@@ -39,7 +40,8 @@ Dashboard → **Edge Functions** → **Secrets**:
 
 | Secret | Required | Example |
 |--------|----------|---------|
-| `OTP_HASH_SECRET` | Yes | Random 32+ char string |
+| `OTP_HASH_SECRET` | Yes | Random 32+ char string (also used to sign session tokens) |
+| `ACCESS_TOKEN_SECRET` | No | Optional separate secret for JWT signing |
 | `RESEND_API_KEY` | Yes* | `re_...` |
 | `RESEND_FROM_EMAIL` | Yes* | `NS Ventures <hello@nsventures.in>` |
 | `RESEND_DEV_MODE` | No | `true` = log OTP only (testing) |
@@ -57,20 +59,21 @@ npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase functions deploy portfolio-otp-send
 npx supabase functions deploy portfolio-otp-verify
+npx supabase functions deploy portfolio-viewer
 ```
 
 **Option 2 — Supabase Dashboard (manual)**
 
 1. **Edge Functions** → **Create function** → name `portfolio-otp-send`
 2. Paste code from `supabase/functions/portfolio-otp-send/index.ts` **plus** inline the contents of `supabase/functions/_shared/portfolio-otp.ts` at the top (Dashboard does not support `_shared` imports)
-3. Repeat for `portfolio-otp-verify`
+3. Repeat for `portfolio-otp-verify` and `portfolio-viewer` (inline `_shared/portfolio-otp.ts` and `portfolio-session.ts` as needed)
 4. For each function: disable **Enforce JWT verification** (public site has no login)
 
 When pasting manually, copy `supabase/functions/_shared/portfolio-otp.ts` into the top of each function file and remove the `import ... from '../_shared/...'` line.
 
 ### D. Database
 
-Run migrations `009` and `010` in SQL Editor if not already applied.
+Run migrations `009`, `010`, and `011` in SQL Editor if not already applied.
 
 ### E. Test
 

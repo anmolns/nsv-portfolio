@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { fetchPortfolioViewer } from '../../api/portfolio'
 import type { PortfolioEntry } from '../../types/portfolio'
+import { PortfolioSessionExpiredError } from '../../lib/portfolioAccess'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
 import { getPortfolioViewerSrc } from '../../lib/portfolioViewer'
 import { YoutubePrivatePlayer } from './YoutubePrivatePlayer'
@@ -9,9 +10,10 @@ import { YoutubePrivatePlayer } from './YoutubePrivatePlayer'
 interface PortfolioVideoModalProps {
   entry: PortfolioEntry
   onClose: () => void
+  onSessionExpired?: () => void
 }
 
-export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps) {
+export function PortfolioVideoModal({ entry, onClose, onSessionExpired }: PortfolioVideoModalProps) {
   const [mediaReady, setMediaReady] = useState(false)
   const [viewer, setViewer] = useState<ReturnType<typeof getPortfolioViewerSrc>>(null)
   const [viewerError, setViewerError] = useState(false)
@@ -38,14 +40,19 @@ export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps
         }
         setViewer(getPortfolioViewerSrc(payload))
       })
-      .catch(() => {
-        if (!cancelled) setViewerError(true)
+      .catch((err) => {
+        if (!cancelled) {
+          if (err instanceof PortfolioSessionExpiredError) {
+            onSessionExpired?.()
+          }
+          setViewerError(true)
+        }
       })
 
     return () => {
       cancelled = true
     }
-  }, [entry.id])
+  }, [entry.id, onSessionExpired])
 
   useEffect(() => {
     pauseSmoothScroll()

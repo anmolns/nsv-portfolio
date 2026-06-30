@@ -1,4 +1,9 @@
 import { getSupabase } from '../lib/supabase'
+import {
+  clearPortfolioAccess,
+  getPortfolioAccessToken,
+  PortfolioSessionExpiredError,
+} from '../lib/portfolioAccess'
 import type { PortfolioPage, PortfolioQuery, PortfolioViewerPayload } from '../types/portfolio'
 
 export async function fetchPortfolioPageFromSupabase(
@@ -22,18 +27,60 @@ export async function fetchPortfolioPageFromSupabase(
   return data as PortfolioPage
 }
 
+type ViewerEdgeOk = {
+  ok: true
+  viewer: PortfolioViewerPayload | null
+}
+
+type ViewerEdgeErr = {
+  ok: false
+  error: string
+}
+
 export async function fetchPortfolioViewerFromSupabase(
   itemId: string,
 ): Promise<PortfolioViewerPayload | null> {
-  const supabase = getSupabase()
+  const accessToken = getPortfolioAccessToken()
+  if (!accessToken) {
+    throw new PortfolioSessionExpiredError()
+  }
 
-  const { data, error } = await supabase.rpc('get_portfolio_viewer', {
-    p_item_id: itemId,
+  const supabase = getSupabase()
+  const { data, error } = await supabase.functions.invoke('portfolio-viewer', {
+    body: { itemId },
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   })
 
+  const payload = (data ?? null) as ViewerEdgeOk | ViewerEdgeErr | null
+
+  if (payload && 'ok' in payload && !payload.ok) {
+    const errMsg = payload.error?.toLowerCase() ?? ''
+    if (
+      errMsg.includes('expired') ||
+      errMsg.includes('token') ||
+      errMsg.includes('session') ||
+      errMsg.includes('access token')
+    ) {
+      clearPortfolioAccess()
+      throw new PortfolioSessionExpiredError(payload.error)
+    }
+    throw new Error(payload.error || 'Failed to load viewer')
+  }
+
   if (error) {
+    const message = error.message?.toLowerCase() ?? ''
+    if (message.includes('401') || message.includes('non-2xx')) {
+      clearPortfolioAccess()
+      throw new PortfolioSessionExpiredError()
+    }
     throw new Error(error.message)
   }
 
-  return (data as PortfolioViewerPayload | null) ?? null
+  if (!payload || !payload.ok) {
+    throw new Error('Invalid viewer response')
+  }
+
+  return payload.viewer
 }

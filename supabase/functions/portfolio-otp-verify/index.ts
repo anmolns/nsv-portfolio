@@ -7,6 +7,7 @@ import {
   jsonResponse,
   normalizeEmail,
 } from '../_shared/portfolio-otp.ts'
+import { createAccessToken } from '../_shared/portfolio-session.ts'
 
 const MAX_ATTEMPTS = 5
 
@@ -90,6 +91,12 @@ Deno.serve(async (req) => {
       console.error('[portfolio-otp-verify] inquiry insert failed:', inquiryError.message)
     }
 
+    const session = await createAccessToken({
+      email: challenge.email,
+      name: challenge.name,
+      phone: challenge.phone_e164,
+    })
+
     return jsonResponse({
       ok: true,
       profile: {
@@ -97,6 +104,9 @@ Deno.serve(async (req) => {
         email: challenge.email,
         phone: challenge.phone_e164,
         verifiedAt,
+        accessToken: session.accessToken,
+        expiresAt: session.expiresAt,
+        expiresIn: session.expiresIn,
       },
     })
   } catch (err) {

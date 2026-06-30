@@ -11,6 +11,7 @@ import {
 } from 'react'
 import type { PortfolioEntry } from '../types/portfolio'
 import {
+  clearPortfolioAccess,
   hasPortfolioAccess,
   PORTFOLIO_ACCESS_TIMER_MS,
   PORTFOLIO_ACCESS_VALIDATION_ENABLED,
@@ -86,6 +87,13 @@ export function PortfolioAccessProvider({ children }: { children: ReactNode }) {
     }
   }, [pendingEntry])
 
+  const handleSessionExpired = useCallback(() => {
+    clearPortfolioAccess()
+    setIsValidated(false)
+    setActiveEntry(null)
+    setGateOpen(true)
+  }, [])
+
   const closePortfolio = useCallback(() => {
     setActiveEntry(null)
   }, [])
@@ -109,7 +117,11 @@ export function PortfolioAccessProvider({ children }: { children: ReactNode }) {
 
       {activeEntry && (
         <Suspense fallback={null}>
-          <PortfolioVideoModal entry={activeEntry} onClose={closePortfolio} />
+          <PortfolioVideoModal
+            entry={activeEntry}
+            onClose={closePortfolio}
+            onSessionExpired={handleSessionExpired}
+          />
         </Suspense>
       )}
     </PortfolioAccessContext.Provider>

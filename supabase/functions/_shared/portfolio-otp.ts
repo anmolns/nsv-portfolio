@@ -139,6 +139,93 @@ function escapeHtml(value: string): string {
     .replaceAll('"', '&quot;')
 }
 
+async function sendResendEmail(opts: {
+  to: string[]
+  subject: string
+  html: string
+  text: string
+}): Promise<void> {
+  const devMode = Deno.env.get('RESEND_DEV_MODE') === 'true'
+  const apiKey = Deno.env.get('RESEND_API_KEY')
+  const from = Deno.env.get('RESEND_FROM_EMAIL') ?? 'NS Ventures <noreply@nsventures.in>'
+
+  if (devMode) {
+    console.log(`[resend][dev] To: ${opts.to.join(', ')} | ${opts.subject}`)
+    console.log(opts.text)
+    return
+  }
+
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY is not configured')
+  }
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+    }),
+  })
+
+  const payload = (await res.json().catch(() => ({}))) as ResendError
+  if (!res.ok) {
+    const detail = payload.message ?? `HTTP ${res.status} from Resend`
+    throw new Error(`Resend: ${detail}`)
+  }
+}
+
+export async function sendCallbackRequestEmail(opts: {
+  name: string
+  email: string
+  phone: string
+  message?: string | null
+  projectName?: string | null
+}): Promise<void> {
+  const notifyTo =
+    Deno.env.get('CALLBACK_NOTIFY_EMAIL')?.trim() || 'prateek@nsventures.in'
+  const name = opts.name.trim()
+  const email = normalizeEmail(opts.email)
+  const phone = opts.phone.trim()
+  const message = opts.message?.trim() || '—'
+  const project = opts.projectName?.trim() || '—'
+
+  const html = `
+    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:24px;">
+      <h2 style="margin:0 0 16px;color:#002d54;font-size:20px;">New portfolio callback request</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155;">
+        <tr><td style="padding:8px 0;font-weight:600;width:120px;">Name</td><td>${escapeHtml(name)}</td></tr>
+        <tr><td style="padding:8px 0;font-weight:600;">Email</td><td>${escapeHtml(email)}</td></tr>
+        <tr><td style="padding:8px 0;font-weight:600;">Phone</td><td>${escapeHtml(phone)}</td></tr>
+        <tr><td style="padding:8px 0;font-weight:600;">Project</td><td>${escapeHtml(project)}</td></tr>
+        <tr><td style="padding:8px 0;font-weight:600;vertical-align:top;">Message</td><td>${escapeHtml(message)}</td></tr>
+      </table>
+    </div>
+  `.trim()
+
+  const text = [
+    'New portfolio callback request',
+    `Name: ${name}`,
+    `Email: ${email}`,
+    `Phone: ${phone}`,
+    `Project: ${project}`,
+    `Message: ${message}`,
+  ].join('\n')
+
+  await sendResendEmail({
+    to: [notifyTo],
+    subject: `Callback request — ${name}`,
+    html,
+    text,
+  })
+}
+
 export function createServiceClient() {
   const url = Deno.env.get('SUPABASE_URL')
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')

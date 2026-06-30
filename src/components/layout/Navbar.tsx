@@ -5,10 +5,10 @@ import { contact } from '../../data/contact'
 import { Logo } from '../ui/Logo'
 
 interface NavbarProps {
-  onInquiryClick?: () => void
+  onCallbackClick?: () => void
 }
 
-export function Navbar({ }: NavbarProps) {
+export function Navbar({ onCallbackClick }: NavbarProps) {
   const scrolled = useScrollPosition()
 
   return (
@@ -45,16 +45,27 @@ export function Navbar({ }: NavbarProps) {
           />
         </a>
 
-        <div className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <motion.a
             href={contact.phoneTel}
-            className="inline-flex shrink-0 items-center justify-center rounded-full bg-cyan px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan/25 transition-colors duration-300 hover:bg-cyan-bright sm:px-6 sm:py-3 sm:text-base"
+            className="inline-flex items-center justify-center rounded-full bg-cyan px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan/25 transition-colors hover:bg-cyan-bright sm:px-6 sm:py-3 sm:text-base"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             data-cursor="pointer"
           >
             {contact.phoneDisplay}
           </motion.a>
+          <motion.button
+            type="button"
+            onClick={onCallbackClick}
+            className="inline-flex items-center justify-center rounded-full bg-cyan px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-cyan/25 transition-colors hover:bg-cyan-bright sm:px-6 sm:py-3 sm:text-base"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            data-cursor="pointer"
+          >
+            <span className="sm:hidden">Callback</span>
+            <span className="hidden sm:inline">Get a callback</span>
+          </motion.button>
         </div>
       </nav>
     </motion.header>
