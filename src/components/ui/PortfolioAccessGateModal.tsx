@@ -54,6 +54,9 @@ export function PortfolioAccessGateModal({
   const [data, setData] = useState<FormState>({ name: '', email: '', phone: '' })
   const [otp, setOtp] = useState('')
   const [emailMasked, setEmailMasked] = useState('')
+  const [phoneMasked, setPhoneMasked] = useState('')
+  const [whatsappSent, setWhatsappSent] = useState(false)
+  const [whatsappError, setWhatsappError] = useState<string | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [resendIn, setResendIn] = useState(0)
@@ -98,12 +101,15 @@ export function PortfolioAccessGateModal({
         projectName: pendingProjectName,
       })
       setEmailMasked(result.emailMasked)
+      setPhoneMasked(result.phoneMasked)
+      setWhatsappSent(result.whatsappSent)
+      setWhatsappError(result.whatsappError ?? null)
       setResendIn(60)
       setOtp('')
       setStep('otp')
     } catch (err) {
       setErrors({
-        submit: err instanceof Error ? err.message : 'Could not send verification email',
+        submit: err instanceof Error ? err.message : 'Could not send verification code',
       })
     } finally {
       setSubmitting(false)
@@ -185,14 +191,35 @@ export function PortfolioAccessGateModal({
               id="portfolio-access-title"
               className="mt-3 font-display text-xl sm:text-2xl font-bold text-white"
             >
-              {step === 'otp' ? 'Check your email' : 'View our work'}
+              {step === 'otp' ? 'Check your email & WhatsApp' : 'View our work'}
             </h2>
             <p className="mt-1.5 text-sm text-white/75 leading-relaxed">
-              {step === 'otp'
-                ? `We sent a 6-digit code to ${emailMasked || 'your email'}.`
-                : pendingProjectName
-                  ? `Verify your email to watch ${pendingProjectName}.`
-                  : 'Verify your email to explore our portfolio.'}
+              {step === 'otp' ? (
+                <>
+                  We sent a 6-digit code to{' '}
+                  <span className="text-white/90">{emailMasked || 'your email'}</span>
+                  {whatsappSent && phoneMasked ? (
+                    <>
+                      {' '}
+                      and WhatsApp{' '}
+                      <span className="text-white/90">{phoneMasked}</span>.
+                    </>
+                  ) : (
+                    '.'
+                  )}
+                  {!whatsappSent ? (
+                    <span className="mt-1 block text-white/60">
+                      {whatsappError?.toLowerCase().includes('invalid end point')
+                        ? `WhatsApp failed — add ${window.location.origin} to Authyo Authorized endpoint. Use the code from your email.`
+                        : 'WhatsApp delivery failed — use the code from your email.'}
+                    </span>
+                  ) : null}
+                </>
+              ) : pendingProjectName ? (
+                `Verify your details to watch ${pendingProjectName}.`
+              ) : (
+                'Verify your details to explore our portfolio.'
+              )}
             </p>
           </div>
 
@@ -255,7 +282,7 @@ export function PortfolioAccessGateModal({
                   disabled={submitting}
                   className="mt-1 w-full rounded-xl bg-navy py-3 text-sm font-semibold text-white shadow-lg shadow-navy/15 hover:bg-navy-light transition-colors disabled:opacity-50"
                 >
-                  {submitting ? 'Sending code…' : 'Continue with email'}
+                  {submitting ? 'Sending code…' : 'Send verification code'}
                 </button>
               </form>
             ) : (

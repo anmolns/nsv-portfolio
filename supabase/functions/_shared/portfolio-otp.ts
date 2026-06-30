@@ -60,6 +60,204 @@ export function maskEmail(email: string): string {
   return `${visible}***@${domain}`
 }
 
+/** Mask E.164 Indian numbers for UI, e.g. +91 75***77 */
+export function maskPhone(phoneE164: string): string {
+  const digits = phoneE164.replace(/\D/g, '')
+  if (digits.length >= 12 && digits.startsWith('91')) {
+    const local = digits.slice(2)
+    if (local.length === 10) {
+      return `+91 ${local.slice(0, 2)}***${local.slice(-2)}`
+    }
+  }
+  return phoneE164
+}
+
+function phoneToAuthyoTo(phoneE164: string): string {
+  return phoneE164.replace(/\D/g, '')
+}
+
+/** Pick the site origin Authyo expects (must match Authorized endpoint in dashboard). */
+export function resolveAuthyoOrigin(opts: {
+  siteOrigin?: string | null
+  headerOrigin?: string | null
+  headerReferer?: string | null
+}): string {
+  const envOverride = Deno.env.get('AUTHYO_AUTHORIZED_ENDPOINT')?.trim()
+  if (envOverride) return envOverride.replace(/\/$/, '')
+
+  const fromReferer = (() => {
+    const referer = opts.headerReferer?.trim()
+    if (!referer) return null
+    try {
+      return new URL(referer).origin
+    } catch {
+      return null
+    }
+  })()
+
+  const candidates = [
+    opts.siteOrigin,
+    opts.headerOrigin,
+    fromReferer,
+    Deno.env.get('AUTHYO_ORIGIN'),
+  ]
+
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim().replace(/\/$/, '') ?? ''
+    if (trimmed && /^https?:\/\//i.test(trimmed)) return trimmed
+  }
+
+  return ''
+}
+
+function parseAuthyoResponse(raw: string, res: Response): AuthyoSendResponse {
+  try {
+    return JSON.parse(raw) as AuthyoSendResponse
+  } catch {
+    console.warn('[portfolio-otp] Authyo non-JSON response:', raw.slice(0, 300))
+    return {}
+  }
+}
+
+function authyoFailureDetail(payload: AuthyoSendResponse, raw: string, res: Response): string {
+  const result = payload.data?.results?.[0]
+  return (
+    result?.message ??
+    payload.message ??
+    (raw.slice(0, 200) || `HTTP ${res.status} from Authyo`)
+  )
+}
+
+async function authyoSendOtpRequest(opts: {
+  clientId: string
+  clientSecret: string
+  origin: string
+  to: string
+  expirySeconds: number
+  otp: string
+  authWay: string
+  includeOtp: boolean
+}): Promise<{ payload: AuthyoSendResponse; raw: string; res: Response }> {
+  const headers: Record<string, string> = {
+    clientId: opts.clientId,
+    clientSecret: opts.clientSecret,
+    origin: opts.origin,
+    Referer: `${opts.origin}/`,
+  }
+
+  const query = new URLSearchParams({
+    to: opts.to,
+    expiry: String(opts.expirySeconds),
+    otpLength: '6',
+    authWay: opts.authWay,
+  })
+  if (opts.includeOtp) query.set('otp', opts.otp)
+
+  const getUrl = `https://app.authyo.io/api/v1/auth/sendotp?${query}`
+  const getRes = await fetch(getUrl, { method: 'GET', headers })
+  const getRaw = await getRes.text()
+  const getPayload = parseAuthyoResponse(getRaw, getRes)
+  const getResult = getPayload.data?.results?.[0]
+
+  if (
+    getRes.ok &&
+    getPayload.success !== false &&
+    getResult?.success !== false
+  ) {
+    return { payload: getPayload, raw: getRaw, res: getRes }
+  }
+
+  const getError = authyoFailureDetail(getPayload, getRaw, getRes).toLowerCase()
+  if (!getError.includes('invalid end point') && !getError.includes('invalid endpoint')) {
+    return { payload: getPayload, raw: getRaw, res: getRes }
+  }
+
+  const postRes = await fetch('https://app.authyo.io/api/v1/auth/sendotp', {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to: opts.to,
+      expiry: opts.expirySeconds,
+      otpLength: 6,
+      otplength: 6,
+      authWay: opts.authWay,
+      authway: opts.authWay,
+      ...(opts.includeOtp ? { otp: opts.otp } : {}),
+    }),
+  })
+  const postRaw = await postRes.text()
+  const postPayload = parseAuthyoResponse(postRaw, postRes)
+  return { payload: postPayload, raw: postRaw, res: postRes }
+}
+
+interface AuthyoSendResponse {
+  success?: boolean
+  message?: string
+  data?: {
+    results?: Array<{
+      success?: boolean
+      message?: string
+      maskId?: string
+    }>
+  }
+}
+
+/**
+ * Send the same server-generated OTP via Authyo WhatsApp.
+ * @see https://authyo.apidog.io/send-otp-12980722e0
+ */
+export async function sendWhatsappOtpViaAuthyo(
+  phoneE164: string,
+  otp: string,
+  expirySeconds: number,
+  requestOrigin?: string,
+): Promise<{ sent: boolean; maskId: string | null }> {
+  const devMode = Deno.env.get('AUTHYO_DEV_MODE') === 'true'
+  const clientId = Deno.env.get('AUTHYO_CLIENT_ID')
+  const clientSecret = Deno.env.get('AUTHYO_CLIENT_SECRET')
+  const origin = requestOrigin?.trim().replace(/\/$/, '') ?? ''
+
+  if (devMode) {
+    console.log(`[portfolio-otp][dev] WhatsApp OTP for ${phoneE164}: ${otp}`)
+    return { sent: true, maskId: null }
+  }
+
+  if (!clientId || !clientSecret) {
+    console.warn('[portfolio-otp] Authyo not configured — skipping WhatsApp OTP')
+    return { sent: false, maskId: null }
+  }
+
+  if (!origin) {
+    throw new Error(
+      'Authyo: missing site origin — set AUTHYO_AUTHORIZED_ENDPOINT=http://localhost:5173 in Supabase secrets and add the same value in Authyo Authorized endpoint',
+    )
+  }
+
+  const to = phoneToAuthyoTo(phoneE164)
+
+  console.log(`[portfolio-otp] Authyo sendotp → ${to} origin=${origin}`)
+
+  const { payload, raw, res } = await authyoSendOtpRequest({
+    clientId,
+    clientSecret,
+    origin,
+    to,
+    expirySeconds,
+    otp,
+    authWay: 'WhatsApp',
+    includeOtp: true,
+  })
+
+  const result = payload.data?.results?.[0]
+  if (res.ok && payload.success !== false && result?.success !== false) {
+    return { sent: true, maskId: result?.maskId ?? null }
+  }
+
+  const detail = authyoFailureDetail(payload, raw, res)
+  console.warn('[portfolio-otp] Authyo error:', detail, `(origin=${origin})`)
+  throw new Error(`Authyo: ${detail}`)
+}
+
 interface ResendError {
   message?: string
 }

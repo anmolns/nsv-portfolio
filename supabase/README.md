@@ -13,7 +13,8 @@
 9. **SQL Editor** → run `supabase/migrations/009_portfolio_whatsapp_otp.sql` (OTP challenges table)
 10. **SQL Editor** → run `supabase/migrations/010_portfolio_otp_email_index.sql` (email lookup index)
 11. **SQL Editor** → run `supabase/migrations/011_protect_portfolio_viewer.sql` (links only via session token)
-12. Add `.env.local`:
+12. **SQL Editor** → run `supabase/migrations/012_otp_delivery_metadata.sql` (WhatsApp delivery metadata)
+13. Add `.env.local`:
 
 ```env
 VITE_SUPABASE_URL=https://xxxx.supabase.co
@@ -24,9 +25,9 @@ VITE_SUPABASE_ANON_KEY=eyJ...
 
 ---
 
-## Step 1b — Portfolio email OTP + session (Resend)
+## Step 1b — Portfolio OTP (Resend email + Authyo WhatsApp) + session
 
-OTP is sent via **[Resend](https://resend.com)**. After verification, the server issues a **30-day session token** (JWT). Video/VR links are only returned by the `portfolio-viewer` edge function when a valid token is sent. (WhatsApp/WATI is on hold.)
+**Email** OTP is sent via **[Resend](https://resend.com)**. **WhatsApp** OTP uses the **same 6-digit code** via **[Authyo](https://authyo.io)**. After verification, the server issues a **30-day session token** (JWT). Video/VR links are only returned by the `portfolio-viewer` edge function when a valid token is sent.
 
 ### A. Resend setup
 
@@ -45,8 +46,13 @@ Dashboard → **Edge Functions** → **Secrets**:
 | `RESEND_API_KEY` | Yes* | `re_...` |
 | `RESEND_FROM_EMAIL` | Yes* | `NS Ventures <hello@nsventures.in>` |
 | `RESEND_DEV_MODE` | No | `true` = log OTP only (testing) |
+| `AUTHYO_CLIENT_ID` | Yes* | From Authyo application |
+| `AUTHYO_CLIENT_SECRET` | Yes* | From Authyo application |
+| `AUTHYO_ORIGIN` | Yes* | Site URL users open (e.g. `http://localhost:5173`) — also add in Authyo **Authorized endpoint** |
+| `AUTHYO_DEV_MODE` | No | `true` = log WhatsApp OTP only (testing) |
+| `CALLBACK_NOTIFY_EMAIL` | No | Callback form recipient (default `prateek@nsventures.in`) |
 
-\*Not required when `RESEND_DEV_MODE=true`
+\*Email: not required when `RESEND_DEV_MODE=true`. WhatsApp: skipped when Authyo secrets missing; use `AUTHYO_DEV_MODE=true` for local logs.
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically on deploy.
 
@@ -73,12 +79,12 @@ When pasting manually, copy `supabase/functions/_shared/portfolio-otp.ts` into t
 
 ### D. Database
 
-Run migrations `009`, `010`, and `011` in SQL Editor if not already applied.
+Run migrations `009`, `010`, `011`, and `012` in SQL Editor if not already applied.
 
 ### E. Test
 
 1. Set `RESEND_DEV_MODE=true` → submit modal → check **portfolio-otp-send** logs for the code
-2. Set `RESEND_API_KEY` + `RESEND_FROM_EMAIL` + `RESEND_DEV_MODE=false` → code arrives by email
+2. Set `RESEND_API_KEY` + `RESEND_FROM_EMAIL` + `AUTHYO_*` secrets + dev modes `false` → code arrives by email and WhatsApp
 
 ---
 

@@ -6,11 +6,15 @@ export interface PortfolioOtpSendPayload {
   email: string
   phone: string
   projectName?: string | null
+  siteOrigin?: string
 }
 
 export interface PortfolioOtpSendResult {
   expiresIn: number
   emailMasked: string
+  phoneMasked: string
+  whatsappSent: boolean
+  whatsappError?: string | null
 }
 
 export interface PortfolioOtpVerifyPayload {
@@ -67,7 +71,10 @@ export async function sendPortfolioEmailOtp(
 
   const supabase = getSupabase()
   const { data, error } = await supabase.functions.invoke('portfolio-otp-send', {
-    body: payload,
+    body: {
+      ...payload,
+      siteOrigin: payload.siteOrigin ?? window.location.origin,
+    },
   })
 
   if (!isEdgeOk(data)) {
@@ -78,6 +85,9 @@ export async function sendPortfolioEmailOtp(
   return {
     expiresIn: result.expiresIn,
     emailMasked: result.emailMasked,
+    phoneMasked: result.phoneMasked,
+    whatsappSent: result.whatsappSent ?? false,
+    whatsappError: result.whatsappError ?? null,
   }
 }
 

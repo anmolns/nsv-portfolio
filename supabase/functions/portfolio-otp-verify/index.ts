@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
     const otp = body.otp?.trim() ?? ''
 
     if (!email || !isValidEmail(email)) return errorResponse('A valid email is required')
-    if (!/^\d{6}$/.test(otp)) return errorResponse('Enter the 6-digit email code')
+    if (!/^\d{6}$/.test(otp)) return errorResponse('Enter the 6-digit verification code')
 
     const supabase = createServiceClient()
 
