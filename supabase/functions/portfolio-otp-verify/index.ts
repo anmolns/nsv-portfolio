@@ -3,14 +3,15 @@ import {
   createServiceClient,
   errorResponse,
   hashOtp,
+  isValidEmail,
   jsonResponse,
-  normalizeIndianPhone,
+  normalizeEmail,
 } from '../_shared/portfolio-otp.ts'
 
 const MAX_ATTEMPTS = 5
 
 interface VerifyBody {
-  phone?: string
+  email?: string
   otp?: string
 }
 
@@ -25,25 +26,25 @@ Deno.serve(async (req) => {
 
   try {
     const body = (await req.json()) as VerifyBody
-    const phoneE164 = normalizeIndianPhone(body.phone ?? '')
+    const email = normalizeEmail(body.email ?? '')
     const otp = body.otp?.trim() ?? ''
 
-    if (!phoneE164) return errorResponse('Enter a valid mobile number')
-    if (!/^\d{6}$/.test(otp)) return errorResponse('Enter the 6-digit WhatsApp code')
+    if (!email || !isValidEmail(email)) return errorResponse('A valid email is required')
+    if (!/^\d{6}$/.test(otp)) return errorResponse('Enter the 6-digit email code')
 
     const supabase = createServiceClient()
 
     const { data: challenge, error: fetchError } = await supabase
       .from('portfolio_otp_challenges')
-      .select('id, otp_hash, name, email, project_name, attempts, expires_at, verified_at')
-      .eq('phone_e164', phoneE164)
+      .select('id, otp_hash, name, email, phone_e164, project_name, attempts, expires_at, verified_at')
+      .eq('email', email)
       .is('verified_at', null)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
 
     if (fetchError) throw new Error(fetchError.message)
-    if (!challenge) return errorResponse('No active code for this number. Request a new one.')
+    if (!challenge) return errorResponse('No active code for this email. Request a new one.')
 
     if (new Date(challenge.expires_at).getTime() < Date.now()) {
       return errorResponse('Code expired. Request a new one.')
@@ -53,7 +54,7 @@ Deno.serve(async (req) => {
       return errorResponse('Too many incorrect attempts. Request a new code.', 429)
     }
 
-    const otpHash = await hashOtp(otp, phoneE164)
+    const otpHash = await hashOtp(otp, email)
     const isMatch = otpHash === challenge.otp_hash
 
     if (!isMatch) {
@@ -78,10 +79,10 @@ Deno.serve(async (req) => {
     const { error: inquiryError } = await supabase.from('inquiries').insert({
       name: challenge.name,
       email: challenge.email,
-      phone: phoneE164,
+      phone: challenge.phone_e164,
       message: project
-        ? `Portfolio access (WhatsApp verified) — requested to view: ${project}`
-        : 'Portfolio access (WhatsApp verified)',
+        ? `Portfolio access (email verified) — requested to view: ${project}`
+        : 'Portfolio access (email verified)',
       project_type: 'Portfolio viewer',
     })
 
@@ -94,7 +95,7 @@ Deno.serve(async (req) => {
       profile: {
         name: challenge.name,
         email: challenge.email,
-        phone: phoneE164,
+        phone: challenge.phone_e164,
         verifiedAt,
       },
     })

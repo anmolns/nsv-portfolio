@@ -25,16 +25,21 @@ export function normalizeIndianPhone(raw: string): string | null {
   return null
 }
 
+export function normalizeEmail(raw: string): string {
+  return raw.trim().toLowerCase()
+}
+
 export function generateOtp(): string {
   const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000
   return String(n).padStart(6, '0')
 }
 
-export async function hashOtp(otp: string, phoneE164: string): Promise<string> {
+export async function hashOtp(otp: string, email: string): Promise<string> {
   const secret = Deno.env.get('OTP_HASH_SECRET')
   if (!secret) throw new Error('OTP_HASH_SECRET is not configured')
 
-  const data = new TextEncoder().encode(`${secret}:${phoneE164}:${otp}`)
+  const normalized = normalizeEmail(email)
+  const data = new TextEncoder().encode(`${secret}:${normalized}:${otp}`)
   const hash = await crypto.subtle.digest('SHA-256', data)
   return Array.from(new Uint8Array(hash))
     .map((b) => b.toString(16).padStart(2, '0'))
@@ -45,123 +50,92 @@ export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 }
 
-interface MetaApiError {
-  error?: {
-    message?: string
-    type?: string
-    code?: number
-    error_subcode?: number
-  }
+export function maskEmail(email: string): string {
+  const normalized = normalizeEmail(email)
+  const at = normalized.indexOf('@')
+  if (at <= 0) return normalized
+  const local = normalized.slice(0, at)
+  const domain = normalized.slice(at + 1)
+  const visible = local.slice(0, Math.min(2, local.length))
+  return `${visible}***@${domain}`
+}
+
+interface ResendError {
+  message?: string
 }
 
 /**
- * Send OTP via Meta WhatsApp Cloud API (official).
- * @see https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates
+ * Send OTP via Resend email API.
+ * @see https://resend.com/docs/api-reference/emails/send-email
  */
-export async function sendWhatsAppOtp(phoneE164: string, otp: string): Promise<void> {
-  const devMode = Deno.env.get('WHATSAPP_DEV_MODE') === 'true'
-  const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN')
-  const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')
+export async function sendEmailOtp(
+  email: string,
+  name: string,
+  otp: string,
+  projectName?: string | null,
+): Promise<void> {
+  const devMode = Deno.env.get('RESEND_DEV_MODE') === 'true'
+  const apiKey = Deno.env.get('RESEND_API_KEY')
+  const from = Deno.env.get('RESEND_FROM_EMAIL') ?? 'NS Ventures <noreply@nsventures.in>'
+
+  const to = normalizeEmail(email)
 
   if (devMode) {
-    console.log(`[portfolio-otp][dev] WhatsApp OTP for ${phoneE164}: ${otp}`)
+    console.log(`[portfolio-otp][dev] Email OTP for ${to}: ${otp}`)
     return
   }
 
-  if (!accessToken || !phoneNumberId) {
+  if (!apiKey) {
     throw new Error(
-      'WhatsApp Cloud API is not configured. Set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID in Edge Function secrets.',
+      'Resend is not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL in Edge Function secrets.',
     )
   }
 
-  const apiVersion = Deno.env.get('WHATSAPP_GRAPH_API_VERSION') ?? 'v21.0'
-  const templateName = Deno.env.get('WHATSAPP_OTP_TEMPLATE') ?? 'portfolio_access_otp'
-  const templateLanguage = Deno.env.get('WHATSAPP_TEMPLATE_LANGUAGE') ?? 'en'
-  const templateType = (Deno.env.get('WHATSAPP_OTP_TEMPLATE_TYPE') ?? 'authentication').toLowerCase()
-  const includeCopyButton = Deno.env.get('WHATSAPP_OTP_COPY_BUTTON') !== 'false'
+  const firstName = name.trim().split(/\s+/)[0] || 'there'
+  const projectLine = projectName?.trim()
+    ? `<p style="margin:16px 0 0;color:#334155;font-size:14px;line-height:1.5;">You requested access to view <strong>${escapeHtml(projectLine)}</strong> on the NS Ventures portfolio.</p>`
+    : ''
+  const projectText = projectLine
+    ? ` You requested access to view ${projectName?.trim()} on the NS Ventures portfolio.`
+    : ''
 
-  const to = phoneE164.replace(/\D/g, '')
-  const template = buildWhatsAppTemplate({
-    templateName,
-    templateLanguage,
-    templateType,
-    otp,
-    includeCopyButton,
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject: `${otp} is your NS Ventures verification code`,
+      html: `
+        <div style="font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+          <p style="margin:0 0 8px;color:#0f172a;font-size:16px;">Hi ${escapeHtml(firstName)},</p>
+          <p style="margin:0;color:#334155;font-size:14px;line-height:1.5;">Use this code to verify your email and continue:</p>
+          <p style="margin:20px 0;font-size:32px;font-weight:700;letter-spacing:0.25em;color:#002d54;">${otp}</p>
+          <p style="margin:0;color:#64748b;font-size:13px;line-height:1.5;">This code expires in 5 minutes. If you did not request this, you can ignore this email.</p>
+          ${projectLine}
+        </div>
+      `.trim(),
+      text: `Hi ${firstName}, your NS Ventures verification code is ${otp}. It expires in 5 minutes.${projectText}`,
+    }),
   })
 
-  const res = await fetch(
-    `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to,
-        type: 'template',
-        template,
-      }),
-    },
-  )
-
-  const payload = (await res.json().catch(() => ({}))) as MetaApiError
+  const payload = (await res.json().catch(() => ({}))) as ResendError
 
   if (!res.ok) {
-    const detail =
-      payload.error?.message ??
-      `HTTP ${res.status} from WhatsApp Cloud API`
-    throw new Error(`WhatsApp Cloud API: ${detail}`)
+    const detail = payload.message ?? `HTTP ${res.status} from Resend`
+    throw new Error(`Resend: ${detail}`)
   }
 }
 
-function buildWhatsAppTemplate(opts: {
-  templateName: string
-  templateLanguage: string
-  templateType: string
-  otp: string
-  includeCopyButton: boolean
-}) {
-  const { templateName, templateLanguage, templateType, otp, includeCopyButton } = opts
-
-  const base = {
-    name: templateName,
-    language: { code: templateLanguage },
-  }
-
-  // Official Authentication OTP templates (category: AUTHENTICATION)
-  if (templateType === 'authentication') {
-    const components: Record<string, unknown>[] = [
-      {
-        type: 'body',
-        parameters: [{ type: 'text', text: otp }],
-      },
-    ]
-
-    if (includeCopyButton) {
-      components.push({
-        type: 'button',
-        sub_type: 'url',
-        index: '0',
-        parameters: [{ type: 'text', text: otp }],
-      })
-    }
-
-    return { ...base, components }
-  }
-
-  // Utility template with one body variable {{1}}
-  return {
-    ...base,
-    components: [
-      {
-        type: 'body',
-        parameters: [{ type: 'text', text: otp }],
-      },
-    ],
-  }
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
 }
 
 export function createServiceClient() {

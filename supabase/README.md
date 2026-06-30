@@ -10,34 +10,28 @@
 6. **SQL Editor** → run `supabase/migrations/006_state_counts_all_cities.sql`
 7. **SQL Editor** → run `supabase/migrations/007_portfolio_state_labels.sql` (state + builder/project/city on items)
 8. **SQL Editor** → run `supabase/migrations/008_hide_portfolio_links.sql` (hide links from public API)
-9. **SQL Editor** → run `supabase/migrations/009_portfolio_whatsapp_otp.sql` (WhatsApp OTP table)
-10. Add `.env.local`:
+9. **SQL Editor** → run `supabase/migrations/009_portfolio_whatsapp_otp.sql` (OTP challenges table)
+10. **SQL Editor** → run `supabase/migrations/010_portfolio_otp_email_index.sql` (email lookup index)
+11. Add `.env.local`:
 
 ```env
 VITE_SUPABASE_URL=https://xxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJ...
 ```
 
-11. Restart `npm run dev`
+12. Restart `npm run dev`
 
 ---
 
-## Step 1b — Portfolio WhatsApp OTP (Meta Cloud API)
+## Step 1b — Portfolio email OTP (Resend)
 
-OTP is sent via the **official [WhatsApp Cloud API](https://developers.facebook.com/docs/whatsapp/cloud-api)** in Supabase Edge Functions. No OTP logic runs in the browser.
+OTP is sent via **[Resend](https://resend.com)** in Supabase Edge Functions. No OTP logic runs in the browser. (WhatsApp/WATI is on hold.)
 
-### A. Meta / WhatsApp setup
+### A. Resend setup
 
-1. Go to [Meta for Developers](https://developers.facebook.com/) → create or open your app
-2. Add product **WhatsApp** → **API Setup**
-3. Note your **Phone number ID** and generate a **permanent access token**
-4. In **WhatsApp Manager** → **Message templates** → **Create template**
-   - **Category:** Authentication
-   - **Name:** `portfolio_access_otp` (or your choice — set `WHATSAPP_OTP_TEMPLATE`)
-   - **Body example:** `{{1}} is your verification code.`
-   - Add **Copy code** button if using authentication type (recommended)
-   - Submit for approval
-5. Add your business phone number and complete Meta business verification if required
+1. Create an account at [resend.com](https://resend.com)
+2. Add and verify your sending domain (or use `onboarding@resend.dev` for testing to your own inbox only)
+3. Create an API key under **API Keys**
 
 ### B. Supabase secrets
 
@@ -46,15 +40,11 @@ Dashboard → **Edge Functions** → **Secrets**:
 | Secret | Required | Example |
 |--------|----------|---------|
 | `OTP_HASH_SECRET` | Yes | Random 32+ char string |
-| `WHATSAPP_ACCESS_TOKEN` | Yes* | Permanent token from Meta |
-| `WHATSAPP_PHONE_NUMBER_ID` | Yes* | e.g. `123456789012345` |
-| `WHATSAPP_OTP_TEMPLATE` | Yes | `portfolio_access_otp` |
-| `WHATSAPP_TEMPLATE_LANGUAGE` | No | `en` or `en_US` (match template) |
-| `WHATSAPP_OTP_TEMPLATE_TYPE` | No | `authentication` (default) or `utility` |
-| `WHATSAPP_OTP_COPY_BUTTON` | No | `true` (default) — set `false` if no button in template |
-| `WHATSAPP_DEV_MODE` | No | `true` = log OTP only (testing) |
+| `RESEND_API_KEY` | Yes* | `re_...` |
+| `RESEND_FROM_EMAIL` | Yes* | `NS Ventures <hello@nsventures.in>` |
+| `RESEND_DEV_MODE` | No | `true` = log OTP only (testing) |
 
-\*Not required when `WHATSAPP_DEV_MODE=true`
+\*Not required when `RESEND_DEV_MODE=true`
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically on deploy.
 
@@ -80,12 +70,12 @@ When pasting manually, copy `supabase/functions/_shared/portfolio-otp.ts` into t
 
 ### D. Database
 
-Run `supabase/migrations/009_portfolio_whatsapp_otp.sql` in SQL Editor.
+Run migrations `009` and `010` in SQL Editor if not already applied.
 
 ### E. Test
 
-1. Set `WHATSAPP_DEV_MODE=true` → submit modal → check **portfolio-otp-send** logs for the code
-2. Set real Meta secrets + `WHATSAPP_DEV_MODE=false` → code arrives on WhatsApp
+1. Set `RESEND_DEV_MODE=true` → submit modal → check **portfolio-otp-send** logs for the code
+2. Set `RESEND_API_KEY` + `RESEND_FROM_EMAIL` + `RESEND_DEV_MODE=false` → code arrives by email
 
 ---
 

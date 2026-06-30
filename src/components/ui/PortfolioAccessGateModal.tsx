@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  sendPortfolioWhatsAppOtp,
-  verifyPortfolioWhatsAppOtp,
+  sendPortfolioEmailOtp,
+  verifyPortfolioEmailOtp,
 } from '../../api/portfolioOtp'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
 import { savePortfolioAccess } from '../../lib/portfolioAccess'
@@ -51,7 +51,7 @@ export function PortfolioAccessGateModal({
   const [step, setStep] = useState<Step>('details')
   const [data, setData] = useState<FormState>({ name: '', email: '', phone: '' })
   const [otp, setOtp] = useState('')
-  const [phoneMasked, setPhoneMasked] = useState('')
+  const [emailMasked, setEmailMasked] = useState('')
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [resendIn, setResendIn] = useState(0)
@@ -90,19 +90,19 @@ export function PortfolioAccessGateModal({
     setErrors({})
 
     try {
-      const result = await sendPortfolioWhatsAppOtp({
+      const result = await sendPortfolioEmailOtp({
         name: data.name,
         email: data.email,
         phone: data.phone,
         projectName: pendingProjectName,
       })
-      setPhoneMasked(result.phoneMasked)
+      setEmailMasked(result.emailMasked)
       setResendIn(60)
       setOtp('')
       setStep('otp')
     } catch (err) {
       setErrors({
-        submit: err instanceof Error ? err.message : 'Could not send WhatsApp code',
+        submit: err instanceof Error ? err.message : 'Could not send verification email',
       })
     } finally {
       setSubmitting(false)
@@ -126,8 +126,8 @@ export function PortfolioAccessGateModal({
     setErrors({})
 
     try {
-      const profile = await verifyPortfolioWhatsAppOtp({
-        phone: data.phone,
+      const profile = await verifyPortfolioEmailOtp({
+        email: data.email.trim(),
         otp: otp.trim(),
       })
       savePortfolioAccess(profile)
@@ -164,10 +164,10 @@ export function PortfolioAccessGateModal({
           </h2>
           <p className="mt-1.5 text-sm text-slate">
             {step === 'otp'
-              ? `Enter the code sent to WhatsApp ${phoneMasked || 'your number'}.`
+              ? `Enter the code sent to ${emailMasked || 'your email'}.`
               : pendingProjectName
-                ? `Verify via WhatsApp to watch ${pendingProjectName}.`
-                : 'Verify via WhatsApp to continue.'}
+                ? `Verify your email to watch ${pendingProjectName}.`
+                : 'Verify your email to continue.'}
           </p>
         </div>
 
@@ -200,7 +200,7 @@ export function PortfolioAccessGateModal({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm text-navy">WhatsApp number</label>
+              <label className="mb-1.5 block text-sm text-navy">Phone number</label>
               <input
                 type="tel"
                 value={data.phone}
@@ -221,7 +221,7 @@ export function PortfolioAccessGateModal({
               disabled={submitting}
               className="mt-2 w-full rounded-lg bg-navy py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {submitting ? 'Sending code…' : 'Send WhatsApp code'}
+              {submitting ? 'Sending code…' : 'Send verification code'}
             </button>
           </form>
         ) : (

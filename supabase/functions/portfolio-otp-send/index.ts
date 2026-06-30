@@ -6,8 +6,10 @@ import {
   hashOtp,
   isValidEmail,
   jsonResponse,
+  maskEmail,
+  normalizeEmail,
   normalizeIndianPhone,
-  sendWhatsAppOtp,
+  sendEmailOtp,
 } from '../_shared/portfolio-otp.ts'
 
 const OTP_TTL_SECONDS = 300
@@ -33,7 +35,7 @@ Deno.serve(async (req) => {
   try {
     const body = (await req.json()) as SendBody
     const name = body.name?.trim() ?? ''
-    const email = body.email?.trim() ?? ''
+    const email = normalizeEmail(body.email ?? '')
     const phoneE164 = normalizeIndianPhone(body.phone ?? '')
     const projectName = body.projectName?.trim() || null
 
@@ -47,7 +49,7 @@ Deno.serve(async (req) => {
     const { count, error: countError } = await supabase
       .from('portfolio_otp_challenges')
       .select('id', { count: 'exact', head: true })
-      .eq('phone_e164', phoneE164)
+      .eq('email', email)
       .gte('created_at', oneHourAgo)
 
     if (countError) throw new Error(countError.message)
@@ -58,7 +60,7 @@ Deno.serve(async (req) => {
     const { data: latest } = await supabase
       .from('portfolio_otp_challenges')
       .select('created_at')
-      .eq('phone_e164', phoneE164)
+      .eq('email', email)
       .is('verified_at', null)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -75,11 +77,11 @@ Deno.serve(async (req) => {
     await supabase
       .from('portfolio_otp_challenges')
       .delete()
-      .eq('phone_e164', phoneE164)
+      .eq('email', email)
       .is('verified_at', null)
 
     const otp = generateOtp()
-    const otpHash = await hashOtp(otp, phoneE164)
+    const otpHash = await hashOtp(otp, email)
     const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000).toISOString()
 
     const { error: insertError } = await supabase.from('portfolio_otp_challenges').insert({
@@ -93,12 +95,12 @@ Deno.serve(async (req) => {
 
     if (insertError) throw new Error(insertError.message)
 
-    await sendWhatsAppOtp(phoneE164, otp)
+    await sendEmailOtp(email, name, otp, projectName)
 
     return jsonResponse({
       ok: true,
       expiresIn: OTP_TTL_SECONDS,
-      phoneMasked: maskPhone(phoneE164),
+      emailMasked: maskEmail(email),
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to send OTP'
@@ -106,9 +108,3 @@ Deno.serve(async (req) => {
     return errorResponse(message, 500)
   }
 })
-
-function maskPhone(phoneE164: string): string {
-  const digits = phoneE164.replace(/\D/g, '')
-  if (digits.length < 4) return phoneE164
-  return `+${digits.slice(0, 2)} ***** ${digits.slice(-4)}`
-}

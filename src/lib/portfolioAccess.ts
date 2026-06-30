@@ -39,7 +39,7 @@ export function savePortfolioAccess(
 /** Delay before auto-showing the access gate (ms). */
 export const PORTFOLIO_ACCESS_TIMER_MS = 18_000
 
-/** Set true to require WhatsApp OTP before viewing portfolio items. */
+/** Set true to require email OTP before viewing portfolio items. */
 // TODO: re-enable tomorrow
 export const PORTFOLIO_ACCESS_VALIDATION_ENABLED = false
 // export const PORTFOLIO_ACCESS_VALIDATION_ENABLED = true

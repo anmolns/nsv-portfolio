@@ -9,11 +9,11 @@ export interface PortfolioOtpSendPayload {
 
 export interface PortfolioOtpSendResult {
   expiresIn: number
-  phoneMasked: string
+  emailMasked: string
 }
 
 export interface PortfolioOtpVerifyPayload {
-  phone: string
+  email: string
   otp: string
 }
 
@@ -38,7 +38,7 @@ function parseEdgeError(error: unknown, data: unknown): string {
   return 'Request failed'
 }
 
-export async function sendPortfolioWhatsAppOtp(
+export async function sendPortfolioEmailOtp(
   payload: PortfolioOtpSendPayload,
 ): Promise<PortfolioOtpSendResult> {
   if (!isSupabaseConfigured()) {
@@ -57,11 +57,11 @@ export async function sendPortfolioWhatsAppOtp(
   const result = data as EdgeOk<PortfolioOtpSendResult>
   return {
     expiresIn: result.expiresIn,
-    phoneMasked: result.phoneMasked,
+    emailMasked: result.emailMasked,
   }
 }
 
-export async function verifyPortfolioWhatsAppOtp(
+export async function verifyPortfolioEmailOtp(
   payload: PortfolioOtpVerifyPayload,
 ): Promise<PortfolioOtpVerifyResult> {
   if (!isSupabaseConfigured()) {
