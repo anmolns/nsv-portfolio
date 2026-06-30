@@ -11,6 +11,7 @@
     "import:tours": "node scripts/import-tours.mjs",
     "parse:tours": "node scripts/parse-vr-csv.mjs",
     "delete:videos": "node --env-file=.env.local scripts/delete-all-videos.mjs",
+    "delete:vr-tours": "node --env-file=.env.local scripts/delete-all-vr-tours.mjs",
     "delete:orphan-thumbs": "node --env-file=.env.local scripts/delete-all-videos.mjs --orphans-only",
     "dev:import": "node --env-file=.env.local server/bulk-import.mjs",
     "start:import": "node server/bulk-import.mjs",

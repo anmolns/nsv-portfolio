@@ -12,12 +12,12 @@ export function FloatingActions() {
   }, [])
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-3">
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-center gap-2.5 sm:bottom-6 sm:right-6 sm:gap-3">
       <motion.a
         href={contact.whatsapp}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#25D366] flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+        className="flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] shadow-lg transition-transform hover:scale-105 sm:h-14 sm:w-14 md:h-16 md:w-16"
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 1.5, type: 'spring', stiffness: 300 }}
@@ -33,7 +33,7 @@ export function FloatingActions() {
         {showTop && (
           <motion.button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-cyan text-navy flex items-center justify-center shadow-lg shadow-cyan/30 hover:bg-cyan-bright transition-colors"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-cyan text-navy shadow-lg shadow-cyan/30 transition-colors hover:bg-cyan-bright sm:h-14 sm:w-14 md:h-16 md:w-16"
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}

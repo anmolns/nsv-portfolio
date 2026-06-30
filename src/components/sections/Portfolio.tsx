@@ -8,7 +8,8 @@ import type { PortfolioEntry, PortfolioMediaType } from '../../types/portfolio'
 import { PortfolioCard } from '../ui/PortfolioCard'
 import { SearchableFilterDropdown } from '../ui/SearchableFilterDropdown'
 
-const CARD_GRID = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 lg:gap-5'
+const CARD_GRID =
+  'grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-3.5 lg:gap-5'
 
 export function Portfolio() {
   const [mediaFilter, setMediaFilter] = useState<PortfolioMediaType>(() =>
@@ -115,7 +116,7 @@ export function Portfolio() {
                 placeholder="Select state"
                 searchPlaceholder="Search states…"
                 onChange={(value) => setActiveState(value || null)}
-                className="max-w-xs"
+                className="w-full max-w-xs"
             />
           </div>
 
@@ -138,7 +139,7 @@ export function Portfolio() {
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
-                  className="aspect-video rounded-xl bg-navy/5 animate-pulse"
+                  className="aspect-[4/3] rounded-xl bg-navy/5 animate-pulse lg:aspect-video"
                   aria-hidden
                 />
               ))}
