@@ -4,6 +4,7 @@ import { fetchPortfolioViewer } from '../../api/portfolio'
 import type { PortfolioEntry } from '../../types/portfolio'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
 import { getPortfolioViewerSrc } from '../../lib/portfolioViewer'
+import { YoutubePrivatePlayer } from './YoutubePrivatePlayer'
 
 interface PortfolioVideoModalProps {
   entry: PortfolioEntry
@@ -108,7 +109,7 @@ export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps
           className={
             isVirtualTour
               ? 'portfolio-modal-media portfolio-modal-media--tour relative min-h-0 w-full flex-1 bg-[#0a0a0a]'
-              : 'portfolio-modal-media portfolio-modal-media--video relative w-full bg-[#0a0a0a]'
+              : 'portfolio-modal-media portfolio-modal-media--video relative w-full aspect-video bg-[#0a0a0a]'
           }
         >
           {viewerError ? (
@@ -145,6 +146,13 @@ export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps
                     mediaReady ? 'opacity-100' : 'opacity-0'
                   }`}
                 />
+              ) : viewer?.youtube && viewer.youtubeVideoId ? (
+                <YoutubePrivatePlayer
+                  key={entry.id}
+                  videoId={viewer.youtubeVideoId}
+                  title={project}
+                  onReady={() => setMediaReady(true)}
+                />
               ) : viewer ? (
                 <iframe
                   key={entry.id}
@@ -163,7 +171,7 @@ export function PortfolioVideoModal({ entry, onClose }: PortfolioVideoModalProps
                         }`
                   }
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen; xr-spatial-tracking"
-                  allowFullScreen
+                  allowFullScreen={isVirtualTour}
                   referrerPolicy="strict-origin-when-cross-origin"
                 />
               ) : null}

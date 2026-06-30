@@ -1,11 +1,19 @@
-import { isDirectVideoUrl, isYoutubeLink, youtubeEmbedUrl } from './portfolioLink'
+import { isDirectVideoUrl, isYoutubeLink, youtubeEmbedUrl, youtubeVideoId } from './portfolioLink'
 
 export type PortfolioViewerMode = 'native-video' | 'iframe'
+
+export type PortfolioViewerSrc = {
+  mode: PortfolioViewerMode
+  src: string
+  /** True when src is a YouTube embed (UI can shield logo / outbound links). */
+  youtube?: boolean
+  youtubeVideoId?: string
+}
 
 export function getPortfolioViewerSrc(entry: {
   link: string
   mediaType: 'video' | 'virtual-tour'
-}): { mode: PortfolioViewerMode; src: string } | null {
+}): PortfolioViewerSrc | null {
   const link = entry.link?.trim()
   if (!link) return null
 
@@ -14,8 +22,9 @@ export function getPortfolioViewerSrc(entry: {
   }
 
   if (entry.mediaType === 'video' && isYoutubeLink(link)) {
+    const id = youtubeVideoId(link)
     const embed = youtubeEmbedUrl(link)
-    if (embed) return { mode: 'iframe', src: embed }
+    if (embed && id) return { mode: 'iframe', src: embed, youtube: true, youtubeVideoId: id }
   }
 
   return { mode: 'iframe', src: link }
