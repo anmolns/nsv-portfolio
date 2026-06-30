@@ -1,10 +1,10 @@
 import http from 'node:http'
 import { createClient } from '@supabase/supabase-js'
 import { portfolioIdFromUrl, resolveMediaTypeFromLink, slugFromUrl } from '../scripts/lib/tour-import-utils.mjs'
+import { fetchYoutubeThumbnailBuffer } from '../scripts/lib/youtube-screenshot.mjs'
 import { launchTourBrowser, screenshotTourToBuffer } from '../scripts/lib/tour-screenshot.mjs'
-import { screenshotYoutubeToBuffer } from '../scripts/lib/youtube-screenshot.mjs'
 
-const PORT = Number(process.env.IMPORT_PORT ?? 3001)
+const PORT = Number(process.env.IMPORT_PORT ?? process.env.PORT ?? 3001)
 
 const supabaseUrl = (process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, '')
 const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? ''
@@ -78,9 +78,16 @@ function idFromLink(link, mediaType) {
 
 async function captureThumbnail(page, link, mediaType) {
   if (mediaType === 'video') {
-    return screenshotYoutubeToBuffer(page, link)
+    return fetchYoutubeThumbnailBuffer(link)
+  }
+  if (!page) {
+    throw new Error('Browser not available for virtual tour thumbnail')
   }
   return screenshotTourToBuffer(page, link)
+}
+
+function thumbnailCaptureStatus(mediaType) {
+  return mediaType === 'video' ? 'thumbnail' : 'screenshot'
 }
 
 async function detectCategoryColumn(adminClient) {
@@ -207,14 +214,17 @@ async function processBulkImport(req, res) {
 
   let browser
   let page
-  try {
-    ;({ browser, page } = await launchTourBrowser())
-  } catch (err) {
-    sendSse(res, 'fatal', {
-      message: `Could not launch browser. Run: npx playwright install chromium — ${err.message}`,
-    })
-    res.end()
-    return
+
+  async function ensureTourBrowser() {
+    if (page) return page
+    try {
+      ;({ browser, page } = await launchTourBrowser())
+      return page
+    } catch (err) {
+      throw new Error(
+        `Could not launch browser for VR tours. Run: npx playwright install chromium — ${err.message}`,
+      )
+    }
   }
 
   try {
@@ -324,13 +334,15 @@ async function processBulkImport(req, res) {
         index: i + 1,
         total: rows.length,
         name: displayName,
-        status: 'screenshot',
+        status: thumbnailCaptureStatus(resolvedMediaType),
         id: tourId,
       })
 
       let thumbnailPath = null
       try {
-        const buffer = await captureThumbnail(page, link, resolvedMediaType)
+        const tourPage =
+          resolvedMediaType === 'video' ? null : await ensureTourBrowser()
+        const buffer = await captureThumbnail(tourPage, link, resolvedMediaType)
         thumbnailPath = `${tourId}.jpg`
         const { error: uploadError } = await adminClient.storage
           .from('tour-thumbs')
@@ -346,7 +358,7 @@ async function processBulkImport(req, res) {
           total: rows.length,
           name: displayName,
           status: 'error',
-          message: `Screenshot failed: ${err.message}`,
+          message: `Thumbnail failed: ${err.message}`,
           id: tourId,
         })
         continue
@@ -427,7 +439,7 @@ async function processBulkImport(req, res) {
       }
     }
   } finally {
-    await browser.close()
+    if (browser) await browser.close()
   }
 
   sendSse(res, 'complete', { success, failed, skipped, total: rows.length })

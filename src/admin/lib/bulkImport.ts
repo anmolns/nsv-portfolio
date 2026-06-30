@@ -4,6 +4,7 @@ export type BulkMediaType = 'virtual-tour' | 'video'
 
 export type BulkItemStatus =
   | 'checking'
+  | 'thumbnail'
   | 'screenshot'
   | 'saving'
   | 'done'
@@ -32,6 +33,15 @@ type BulkImportHandler = {
   onComplete?: (event: BulkImportCompleteEvent) => void
   onWarn?: (message: string) => void
   onFatal?: (message: string) => void
+}
+
+function bulkImportApiBase(): string {
+  return (import.meta.env.VITE_BULK_IMPORT_API_URL ?? '').replace(/\/$/, '')
+}
+
+function bulkImportUrl(path: string): string {
+  const base = bulkImportApiBase()
+  return base ? `${base}${path}` : path
 }
 
 function parseSseChunk(chunk: string, handlers: BulkImportHandler) {
@@ -63,9 +73,13 @@ function parseSseChunk(chunk: string, handlers: BulkImportHandler) {
   }
 }
 
+export function isRemoteBulkImport(): boolean {
+  return Boolean(bulkImportApiBase())
+}
+
 export async function checkBulkImportServer(): Promise<boolean> {
   try {
-    const res = await fetch('/api/bulk-import/health')
+    const res = await fetch(bulkImportUrl('/api/bulk-import/health'))
     if (!res.ok) return false
     const data = (await res.json()) as { configured?: boolean }
     return Boolean(data.configured)
@@ -82,7 +96,7 @@ export async function runBulkImport(
   mediaType: BulkMediaType,
   handlers: BulkImportHandler,
 ): Promise<void> {
-  const res = await fetch('/api/bulk-import', {
+  const res = await fetch(bulkImportUrl('/api/bulk-import'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -13,6 +13,7 @@ import {
 } from '../lib/bulkBatches'
 import {
   checkBulkImportServer,
+  isRemoteBulkImport,
   type BulkMediaType,
 } from '../lib/bulkImport'
 import {
@@ -28,6 +29,7 @@ import { cn } from '../../lib/utils'
 
 const STATUS_LABEL: Record<string, string> = {
   checking: 'Checking…',
+  thumbnail: 'Fetching thumbnail…',
   screenshot: 'Capturing thumbnail…',
   saving: 'Saving to database…',
   done: 'Done',
@@ -48,13 +50,13 @@ const PANEL_COPY: Record<
     sheetHint:
       'For each sheet: choose a state, then attach a CSV/Excel with Name + Link columns.',
     fileHint: 'Name + Link columns (virtual tour URLs)',
-    thumbNote: 'Thumbnails: opens tour, pans viewer, captures frame.',
+    thumbNote: 'Thumbnails: Playwright opens the tour and captures a frame.',
   },
   video: {
     sheetHint:
       'For each sheet: choose a state, then attach your YouTube CSV (Category + Title + Youtube Link).',
     fileHint: 'Builder + Project + City + Category + Youtube Link columns',
-    thumbNote: 'Thumbnails: full-width 1920×1080 capture from video/canvas after play.',
+    thumbNote: 'Thumbnails: fetched from YouTube (original video poster).',
   },
 }
 
@@ -200,10 +202,20 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
     <>
       {serverReady === false && (
         <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="font-semibold">Import server not running</p>
+          <p className="font-semibold">Import server not reachable</p>
           <p className="mt-1 text-amber-800/90">
-            Run <code className="rounded bg-amber-100 px-1.5 py-0.5">npm run dev:all</code> so
-            Playwright can capture thumbnails locally.
+            {isRemoteBulkImport() ? (
+              <>
+                Check that the bulk-import service is running and{' '}
+                <code className="rounded bg-amber-100 px-1.5 py-0.5">VITE_BULK_IMPORT_API_URL</code>{' '}
+                points to it (e.g. Railway / Render / your VPS).
+              </>
+            ) : (
+              <>
+                Run <code className="rounded bg-amber-100 px-1.5 py-0.5">npm run dev:all</code> to
+                start the bulk import server locally.
+              </>
+            )}
           </p>
         </div>
       )}
@@ -421,7 +433,8 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                   item.status === 'done' && 'bg-emerald-50 text-emerald-800',
                   item.status === 'skipped' && 'bg-slate-50 text-slate',
                   item.status === 'error' && 'bg-red-50 text-red-700',
-                  (item.status === 'screenshot' ||
+                  (item.status === 'thumbnail' ||
+                    item.status === 'screenshot' ||
                     item.status === 'saving' ||
                     item.status === 'checking') &&
                     'bg-cyan/5 text-navy',

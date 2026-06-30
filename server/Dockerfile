@@ -11,6 +11,8 @@ COPY scripts/lib ./scripts/lib
 
 ENV NODE_ENV=production
 ENV PORT=3001
+ENV IMPORT_PORT=3001
+ENV IMPORT_PORT=3001
 
 EXPOSE 3001
 

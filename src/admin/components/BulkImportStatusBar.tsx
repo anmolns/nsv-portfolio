@@ -6,6 +6,7 @@ import { cn } from '../../lib/utils'
 
 const STATUS_LABEL: Record<string, string> = {
   checking: 'Checking…',
+  thumbnail: 'Fetching…',
   screenshot: 'Capturing…',
   saving: 'Saving…',
   done: 'Done',

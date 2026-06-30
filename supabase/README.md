@@ -127,7 +127,55 @@ on conflict (user_id) do nothing;
 
 ---
 
-## Step 3 (next)
+## Step 3 — Deploy online
+
+### A. Public site (Vercel / Netlify / static host)
+
+1. Connect the repo and set build command: `npm run build`, output: `dist`
+2. Environment variables:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `VITE_BULK_IMPORT_API_URL` — URL of your import server (see B)
+3. Deploy. Admin login and portfolio work via Supabase; bulk upload needs the import server.
+
+### B. Bulk import server (Railway / Render / Fly / VPS)
+
+**YouTube videos** only fetch thumbnails from YouTube CDN (lightweight). **VR tours** still use Playwright in the container.
+
+From repo root:
+
+```bash
+docker build -f server/Dockerfile -t nsv-bulk-import .
+docker run -p 3001:3001 \
+  -e SUPABASE_URL=https://xxxx.supabase.co \
+  -e SUPABASE_ANON_KEY=eyJ... \
+  -e SUPABASE_SERVICE_ROLE_KEY=eyJ... \
+  nsv-bulk-import
+```
+
+Health check: `GET https://your-import-host/api/bulk-import/health`
+
+On Railway / Render: deploy from `server/Dockerfile`, set the three Supabase env vars, expose port **3001**.
+
+Then set on Vercel (redeploy):
+
+```env
+VITE_BULK_IMPORT_API_URL=https://your-import-host.railway.app
+```
+
+**Video-only (no Docker):** a small Node VM can run `npm run start:import` with env vars — YouTube bulk upload works without Playwright. VR bulk upload needs the Docker image above.
+
+### C. Local dev
+
+```bash
+npm run dev:all
+```
+
+Uses Vite proxy to `localhost:3001` — no `VITE_BULK_IMPORT_API_URL` needed.
+
+---
+
+## Step 4 (next)
 
 - Inquiry form → Supabase + email (Resend)
 - Load city filters from DB instead of `metroCities.ts`

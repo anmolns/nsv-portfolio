@@ -43,7 +43,7 @@ export function PortfolioCard({
     >
       <div className="portfolio-card-perspective w-full">
         <div
-          className={`portfolio-card-flipper portfolio-card-shell relative w-full aspect-[3/2] cursor-pointer${
+          className={`portfolio-card-flipper portfolio-card-shell relative w-full aspect-video cursor-pointer${
             !canHover && flipped ? ' portfolio-card-flipped' : ''
           }`}
         >
@@ -87,7 +87,7 @@ export function PortfolioCard({
               height={PORTFOLIO_THUMB_HEIGHT}
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-contain object-center"
               onError={() => setThumbnailSrc(GENERIC_PORTFOLIO_THUMBNAIL)}
             />
           </div>

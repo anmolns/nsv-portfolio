@@ -13,6 +13,7 @@
     "delete:videos": "node --env-file=.env.local scripts/delete-all-videos.mjs",
     "delete:orphan-thumbs": "node --env-file=.env.local scripts/delete-all-videos.mjs --orphans-only",
     "dev:import": "node --env-file=.env.local server/bulk-import.mjs",
+    "start:import": "node server/bulk-import.mjs",
     "dev:all": "concurrently -n vite,import -c cyan,magenta \"npm run dev\" \"npm run dev:import\""
   },
   "dependencies": {

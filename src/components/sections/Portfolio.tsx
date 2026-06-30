@@ -138,7 +138,7 @@ export function Portfolio() {
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
-                  className="aspect-[3/2] rounded-xl bg-navy/5 animate-pulse"
+                  className="aspect-video rounded-xl bg-navy/5 animate-pulse"
                   aria-hidden
                 />
               ))}
