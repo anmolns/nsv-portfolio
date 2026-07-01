@@ -45,16 +45,15 @@ export function Hero() {
     if (!section || !video) return
 
     const loadVideo = () => {
-      if (video.src) return
-      video.src = HERO_VIDEO
-      video.load()
       video.play().catch(() => {})
     }
 
-    const idleId =
-      typeof requestIdleCallback !== 'undefined'
-        ? requestIdleCallback(loadVideo, { timeout: 2500 })
-        : window.setTimeout(loadVideo, 800)
+    const onLoadedData = () => loadVideo()
+    if (video.readyState >= 2) {
+      loadVideo()
+    } else {
+      video.addEventListener('loadeddata', onLoadedData, { once: true })
+    }
 
     const setupScroll = () => {
       gsap.to(video, {
@@ -75,11 +74,7 @@ export function Hero() {
         : window.setTimeout(setupScroll, 1200)
 
     return () => {
-      if (typeof cancelIdleCallback !== 'undefined' && typeof idleId === 'number') {
-        cancelIdleCallback(idleId)
-      } else {
-        clearTimeout(idleId as number)
-      }
+      video.removeEventListener('loadeddata', onLoadedData)
       if (typeof cancelIdleCallback !== 'undefined' && typeof scrollId === 'number') {
         cancelIdleCallback(scrollId)
       } else {
@@ -109,6 +104,7 @@ export function Hero() {
     >
       <video
         ref={videoRef}
+        src={HERO_VIDEO}
         className={`absolute inset-0 w-full h-full object-cover brightness-[0.45] transition-opacity duration-700 ${
           videoReady ? 'opacity-100' : 'opacity-0'
         }`}
@@ -116,9 +112,10 @@ export function Hero() {
         muted
         loop
         playsInline
-        preload="none"
+        preload="metadata"
         aria-hidden
         onCanPlay={() => setVideoReady(true)}
+        onError={() => setVideoReady(false)}
       />
 
       <div className="absolute inset-0 bg-gradient-to-r from-navy/90 from-0% via-navy/55 via-45% to-navy/15 to-100% pointer-events-none" />
