@@ -23,3 +23,6 @@ supabase-edge-secrets.env
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+.env*

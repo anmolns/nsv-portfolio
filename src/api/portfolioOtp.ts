@@ -15,6 +15,44 @@ export interface PortfolioOtpSendResult {
   phoneMasked: string
   whatsappSent: boolean
   whatsappError?: string | null
+  whatsappDispatchToken?: string | null
+}
+
+function authyoRelayUrl(): string {
+  const configured = import.meta.env.VITE_AUTHYO_RELAY_URL?.trim()
+  if (configured) return configured.replace(/\/$/, '')
+  return '/api/authyo/send-otp'
+}
+
+async function dispatchWhatsappOtp(token: string, origin: string) {
+  const res = await fetch(authyoRelayUrl(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, origin }),
+  })
+
+  const body = (await res.json().catch(() => ({}))) as {
+    ok?: boolean
+    error?: string
+  }
+
+  if (!res.ok || body.ok !== true) {
+    const err = body.error ?? 'WhatsApp relay failed'
+    const relayOffline =
+      res.status === 503 ||
+      err.toLowerCase().includes('not configured') ||
+      err.toLowerCase().includes('relay not configured')
+    return {
+      whatsappSent: false,
+      whatsappError: relayOffline
+        ? import.meta.env.PROD
+          ? 'WhatsApp relay not configured on Vercel — add OTP_HASH_SECRET, AUTHYO_CLIENT_ID, AUTHYO_CLIENT_SECRET env vars and redeploy.'
+          : 'WhatsApp relay offline — add Authyo secrets to .env.local and run npm run dev:all'
+        : err,
+    }
+  }
+
+  return { whatsappSent: true, whatsappError: null as string | null }
 }
 
 export interface PortfolioOtpVerifyPayload {
@@ -81,13 +119,28 @@ export async function sendPortfolioEmailOtp(
     throw new Error(await parseEdgeError(error, data))
   }
 
-  const result = data as unknown as EdgeOk<PortfolioOtpSendResult>
+  const result = data as unknown as EdgeOk<
+    PortfolioOtpSendResult & { whatsappDispatchToken?: string | null }
+  >
+
+  let whatsappSent = result.whatsappSent ?? false
+  let whatsappError = result.whatsappError ?? null
+
+  if (result.whatsappDispatchToken) {
+    const relay = await dispatchWhatsappOtp(
+      result.whatsappDispatchToken,
+      payload.siteOrigin ?? window.location.origin,
+    )
+    whatsappSent = relay.whatsappSent
+    whatsappError = relay.whatsappError
+  }
+
   return {
     expiresIn: result.expiresIn,
     emailMasked: result.emailMasked,
     phoneMasked: result.phoneMasked,
-    whatsappSent: result.whatsappSent ?? false,
-    whatsappError: result.whatsappError ?? null,
+    whatsappSent,
+    whatsappError,
   }
 }
 

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/run-dev.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -12,10 +12,14 @@
     "parse:tours": "node scripts/parse-vr-csv.mjs",
     "delete:videos": "node --env-file=.env.local scripts/delete-all-videos.mjs",
     "delete:vr-tours": "node --env-file=.env.local scripts/delete-all-vr-tours.mjs",
+    "test:authyo": "node --env-file=.env.local scripts/test-authyo.mjs",
     "delete:orphan-thumbs": "node --env-file=.env.local scripts/delete-all-videos.mjs --orphans-only",
     "dev:import": "node --env-file=.env.local server/bulk-import.mjs",
     "start:import": "node server/bulk-import.mjs",
-    "dev:all": "concurrently -n vite,import -c cyan,magenta \"npm run dev\" \"npm run dev:import\""
+    "dev:free": "node scripts/free-dev-ports.mjs",
+    "predev:all": "node scripts/free-dev-ports.mjs",
+    "dev:all": "concurrently -k -n vite,import -c cyan,magenta npm:dev npm:dev:import",
+    "dev-all": "npm run dev:all"
   },
   "dependencies": {
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",

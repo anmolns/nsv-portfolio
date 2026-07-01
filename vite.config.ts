@@ -5,8 +5,13 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    strictPort: true,
     proxy: {
       '/api/bulk-import': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/api/authyo': {
         target: 'http://localhost:3001',
         changeOrigin: true,
       },

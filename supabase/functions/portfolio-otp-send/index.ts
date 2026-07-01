@@ -11,9 +11,8 @@ import {
   normalizeEmail,
   normalizeIndianPhone,
   sendEmailOtp,
-  sendWhatsappOtpViaAuthyo,
-  resolveAuthyoOrigin,
 } from '../_shared/portfolio-otp.ts'
+import { createWhatsappDispatchToken } from '../_shared/whatsapp-dispatch.ts'
 
 const OTP_TTL_SECONDS = 300
 const MAX_SENDS_PER_HOUR = 5
@@ -122,36 +121,16 @@ Deno.serve(async (req) => {
       throw err
     }
 
-    let whatsappSent = false
-    let whatsappMaskId: string | null = null
-    let whatsappError: string | null = null
-
-    const authyoOrigin = resolveAuthyoOrigin({
-      siteOrigin: body.siteOrigin,
-      headerOrigin: req.headers.get('origin'),
-      headerReferer: req.headers.get('referer'),
+    const whatsappDispatchToken = await createWhatsappDispatchToken({
+      phoneE164,
+      otp,
+      ttlSeconds: OTP_TTL_SECONDS,
     })
-
-    try {
-      const whatsapp = await sendWhatsappOtpViaAuthyo(
-        phoneE164,
-        otp,
-        OTP_TTL_SECONDS,
-        authyoOrigin,
-      )
-      whatsappSent = whatsapp.sent
-      whatsappMaskId = whatsapp.maskId
-    } catch (err) {
-      whatsappError = err instanceof Error ? err.message : 'WhatsApp delivery failed'
-      console.warn('[portfolio-otp-send]', whatsappError)
-    }
 
     await supabase
       .from('portfolio_otp_challenges')
       .update({
         email_sent_at: sentAt,
-        whatsapp_sent_at: whatsappSent ? sentAt : null,
-        whatsapp_mask_id: whatsappMaskId,
       })
       .eq('id', challenge.id)
 
@@ -160,8 +139,8 @@ Deno.serve(async (req) => {
       expiresIn: OTP_TTL_SECONDS,
       emailMasked: maskEmail(email),
       phoneMasked: maskPhone(phoneE164),
-      whatsappSent,
-      whatsappError,
+      whatsappSent: false,
+      whatsappDispatchToken,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to send OTP'

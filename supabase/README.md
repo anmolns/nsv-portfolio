@@ -128,16 +128,29 @@ on conflict (user_id) do nothing;
 
 ## Step 3 — Deploy online
 
-### A. Public site (Vercel / Netlify / static host)
+### A. Public site (Vercel)
 
-1. Connect the repo and set build command: `npm run build`, output: `dist`
-2. Environment variables:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-   - `VITE_BULK_IMPORT_API_URL` — URL of your import server (see B)
-3. Deploy. Admin login and portfolio work via Supabase; bulk upload needs the import server.
+1. Connect the repo — build: `npm run build`, output: `dist`
+2. **Vercel environment variables** (Settings → Environment Variables):
 
-### B. Bulk import server (Railway / Render / Fly / VPS)
+| Variable | Example | Notes |
+|----------|---------|--------|
+| `VITE_SUPABASE_URL` | `https://xxxx.supabase.co` | Public |
+| `VITE_SUPABASE_ANON_KEY` | `eyJ...` | Public |
+| `OTP_HASH_SECRET` | same as Supabase | **Server only** — not `VITE_` |
+| `AUTHYO_CLIENT_ID` | from Authyo app | Server only |
+| `AUTHYO_CLIENT_SECRET` | from Authyo app | Server only |
+| `AUTHYO_AUTHORIZED_ENDPOINT` | `https://your-site.vercel.app` | Must match Authyo dashboard |
+
+3. **Authyo dashboard** → Application → **Authorized endpoint** = your live site URL (e.g. `https://nsvportfolio.vercel.app`), no trailing slash.
+
+4. Redeploy Vercel after adding env vars.
+
+**WhatsApp flow on Vercel:** browser → Supabase `portfolio-otp-send` (email + token) → Vercel serverless `/api/authyo/send-otp` → Authyo.
+
+Optional: `VITE_BULK_IMPORT_API_URL` if bulk upload uses a separate import server (see B).
+
+### B. Bulk import server (Railway / Render — optional)
 
 **YouTube videos** only fetch thumbnails from YouTube CDN (lightweight). **VR tours** still use Playwright in the container.
 

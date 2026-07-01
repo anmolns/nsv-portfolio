@@ -209,9 +209,12 @@ export function PortfolioAccessGateModal({
                   )}
                   {!whatsappSent ? (
                     <span className="mt-1 block text-white/60">
-                      {whatsappError?.toLowerCase().includes('invalid end point')
-                        ? `WhatsApp failed — add ${window.location.origin} to Authyo Authorized endpoint. Use the code from your email.`
-                        : 'WhatsApp delivery failed — use the code from your email.'}
+                      {whatsappError?.toLowerCase().includes('invalid end point') ||
+                      whatsappError?.toLowerCase().includes('invalid endpoint')
+                        ? 'WhatsApp failed — set AUTHYO_AUTHORIZED_ENDPOINT=http://localhost:5173 in .env.local and Authyo dashboard, then run npm run dev:all.'
+                        : whatsappError?.includes('relay')
+                          ? 'WhatsApp relay offline — run npm run dev:all (needs import server on :3001).'
+                          : whatsappError ?? 'WhatsApp delivery failed — use the code from your email.'}
                     </span>
                   ) : null}
                 </>
