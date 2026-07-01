@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { fetchPortfolioViewer } from '../../api/portfolio'
 import type { PortfolioEntry } from '../../types/portfolio'
 import { PortfolioSessionExpiredError } from '../../lib/portfolioAccess'
+import { formatVideoPublishedDate } from '../../lib/formatVideoDate'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
 import { getPortfolioViewerSrc } from '../../lib/portfolioViewer'
 import { YoutubePrivatePlayer } from './YoutubePrivatePlayer'
@@ -21,7 +22,9 @@ export function PortfolioVideoModal({ entry, onClose, onSessionExpired }: Portfo
   const project = (entry.projectName ?? entry.name).trim()
   const builder = entry.builderName?.trim()
   const city = entry.city?.trim()
-  const meta = [builder, city].filter(Boolean).join(' · ')
+  const publishedLabel =
+    entry.mediaType === 'video' ? formatVideoPublishedDate(entry.videoPublishedAt) : null
+  const meta = [builder, city, publishedLabel].filter(Boolean).join(' · ')
   const isVirtualTour = entry.mediaType === 'virtual-tour'
 
   useEffect(() => {
@@ -89,24 +92,31 @@ export function PortfolioVideoModal({ entry, onClose, onSessionExpired }: Portfo
         aria-modal="true"
         aria-labelledby="portfolio-video-modal-title"
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border/60 bg-white px-4 py-4 sm:px-5">
-          <div className="min-w-0 pr-2">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/50 bg-white px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <h2
               id="portfolio-video-modal-title"
-              className="truncate font-display text-lg font-bold text-navy sm:text-xl"
+              className="truncate font-display text-base font-bold leading-tight text-navy sm:text-lg"
             >
               {project}
             </h2>
-            {meta && <p className="mt-1 truncate text-sm text-slate">{meta}</p>}
+            {meta && (
+              <>
+                <span className="shrink-0 text-xs text-slate/40" aria-hidden>
+                  ·
+                </span>
+                <p className="min-w-0 truncate text-sm text-slate sm:text-[0.9375rem]">{meta}</p>
+              </>
+            )}
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-off-white text-slate transition-colors hover:border-cyan/40 hover:text-navy"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-off-white text-slate transition-colors hover:border-cyan/40 hover:text-navy"
             aria-label="Close"
           >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden>
               <path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="1.5" />
             </svg>
           </button>

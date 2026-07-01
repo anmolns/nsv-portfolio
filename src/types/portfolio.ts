@@ -10,6 +10,8 @@ export interface PortfolioEntry {
   city?: string | null
   state?: string | null
   mediaType: PortfolioMediaType
+  /** ISO date from YouTube (videos only) */
+  videoPublishedAt?: string | null
   /** Stored in DB; not shown on the public site */
   category?: string | null
 }

@@ -4,6 +4,7 @@ import { sendAuthyoWhatsappOtp } from './lib/authyo-client.mjs'
 import { verifyWhatsappDispatchToken } from './lib/whatsapp-dispatch.mjs'
 import { portfolioIdFromUrl, resolveMediaTypeFromLink, slugFromUrl } from '../scripts/lib/tour-import-utils.mjs'
 import { fetchYoutubeThumbnailBuffer } from '../scripts/lib/youtube-screenshot.mjs'
+import { fetchYoutubeMetadata } from '../scripts/lib/youtube-metadata.mjs'
 import { launchTourBrowser, screenshotTourToBuffer } from '../scripts/lib/tour-screenshot.mjs'
 
 const PORT = Number(process.env.IMPORT_PORT ?? process.env.PORT ?? 3001)
@@ -122,6 +123,16 @@ async function detectLabelColumns(adminClient) {
   return !error
 }
 
+async function detectVideoPublishedColumn(adminClient) {
+  const { error } = await adminClient.from('portfolio_items').select('video_published_at').limit(1)
+  return !error
+}
+
+function withVideoPublished(fields, publishedAt, supported) {
+  if (!supported || !publishedAt) return fields
+  return { ...fields, video_published_at: publishedAt }
+}
+
 function withItemLabels(fields, row, state, labelsSupported) {
   if (!labelsSupported) return fields
 
@@ -187,11 +198,19 @@ async function processBulkImport(req, res) {
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
   const categorySupported = await detectCategoryColumn(adminClient)
   const labelsSupported = await detectLabelColumns(adminClient)
+  const videoPublishedSupported = await detectVideoPublishedColumn(adminClient)
 
   if (!labelsSupported) {
     sendSse(res, 'warn', {
       message:
         'State/label columns not in database yet — run supabase/migrations/007_portfolio_state_labels.sql, then retry import.',
+    })
+  }
+
+  if (!videoPublishedSupported && mediaType === 'video') {
+    sendSse(res, 'warn', {
+      message:
+        'video_published_at column missing — run supabase/migrations/013_video_published_at.sql to store YouTube dates.',
     })
   }
 
@@ -366,6 +385,16 @@ async function processBulkImport(req, res) {
         continue
       }
 
+      let videoPublishedAt = null
+      if (resolvedMediaType === 'video') {
+        try {
+          const meta = await fetchYoutubeMetadata(link)
+          videoPublishedAt = meta.publishedAt
+        } catch (err) {
+          console.warn(`[bulk-import] YouTube date for ${displayName}:`, err.message)
+        }
+      }
+
       sendSse(res, 'item', {
         index: i + 1,
         total: rows.length,
@@ -379,12 +408,40 @@ async function processBulkImport(req, res) {
           const { error } = await adminClient
             .from('portfolio_items')
             .update(
+              withVideoPublished(
+                withItemLabels(
+                  withCategory(
+                    {
+                      name: displayName,
+                      thumbnail_path: thumbnailPath,
+                      media_type: resolvedMediaType,
+                    },
+                    category,
+                    categorySupported,
+                  ),
+                  row,
+                  state,
+                  labelsSupported,
+                ),
+                videoPublishedAt,
+                videoPublishedSupported,
+              ),
+            )
+            .eq('id', tourId)
+          if (error) throw new Error(error.message)
+        } else {
+          const { error } = await adminClient.from('portfolio_items').insert(
+            withVideoPublished(
               withItemLabels(
                 withCategory(
                   {
+                    id: tourId,
                     name: displayName,
+                    link,
                     thumbnail_path: thumbnailPath,
                     media_type: resolvedMediaType,
+                    is_published: true,
+                    sort_order: sortOrder++,
                   },
                   category,
                   categorySupported,
@@ -393,28 +450,8 @@ async function processBulkImport(req, res) {
                 state,
                 labelsSupported,
               ),
-            )
-            .eq('id', tourId)
-          if (error) throw new Error(error.message)
-        } else {
-          const { error } = await adminClient.from('portfolio_items').insert(
-            withItemLabels(
-              withCategory(
-                {
-                  id: tourId,
-                  name: displayName,
-                  link,
-                  thumbnail_path: thumbnailPath,
-                  media_type: resolvedMediaType,
-                  is_published: true,
-                  sort_order: sortOrder++,
-                },
-                category,
-                categorySupported,
-              ),
-              row,
-              state,
-              labelsSupported,
+              videoPublishedAt,
+              videoPublishedSupported,
             ),
           )
           if (error) throw new Error(error.message)

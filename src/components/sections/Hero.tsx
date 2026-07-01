@@ -109,7 +109,7 @@ export function Hero() {
     >
       <video
         ref={videoRef}
-        className={`absolute inset-0 w-full h-full object-cover brightness-[0.55] transition-opacity duration-700 ${
+        className={`absolute inset-0 w-full h-full object-cover brightness-[0.45] transition-opacity duration-700 ${
           videoReady ? 'opacity-100' : 'opacity-0'
         }`}
         poster={HERO_POSTER}
@@ -121,8 +121,8 @@ export function Hero() {
         onCanPlay={() => setVideoReady(true)}
       />
 
-      <div className="absolute inset-0 bg-gradient-to-r from-navy from-0% via-navy/85 via-45% to-navy/30 to-100% pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-t from-navy/80 via-transparent to-navy/20 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-navy/90 from-0% via-navy/55 via-45% to-navy/15 to-100% pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-navy/50 via-transparent to-navy/10 pointer-events-none" />
 
       <div className="relative z-10 flex h-full w-full min-w-0 flex-col justify-center max-w-[1400px] mx-auto px-5 sm:px-6 lg:px-12 pt-20 sm:pt-24">
         <h1 className="font-display w-full min-w-0 text-[clamp(1.75rem,8vw,5.5rem)] font-bold text-white leading-[1.1] sm:text-[clamp(2.25rem,7vw,5.5rem)] lg:text-[clamp(2.75rem,7.5vw,5.5rem)]">

@@ -10,17 +10,17 @@ interface YtPlayer {
   getAvailableQualityLevels: () => string[]
 }
 
-const QUALITY_PREFERENCE = ['hd1080', 'hd720', 'large', 'medium', 'small'] as const
+const QUALITY_PREFERENCE = ['hd1080', 'hd720', 'large', 'medium'] as const
 const MIN_1080_WIDTH = 1920
 const MIN_1080_HEIGHT = 1080
-const CROP_SCALE = 1.05
+const CROP_SCALE = 1.12
 
 function requestHighestQuality(player: YtPlayer) {
   try {
     const available = player.getAvailableQualityLevels()
     const pick =
       QUALITY_PREFERENCE.find((q) => available.includes(q)) ??
-      available[0] ??
+      available[available.length - 1] ??
       'default'
     player.setPlaybackQuality(pick)
   } catch {
@@ -168,6 +168,7 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
             ) {
               setIsPlaying(true)
               requestHighestQuality(event.target)
+              syncPlayerSize()
             } else {
               setIsPlaying(false)
             }

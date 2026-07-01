@@ -5,7 +5,7 @@ import { youtubeVideoIdFromUrl } from './tour-import-utils.mjs'
  * No Playwright — VR tours use screenshotTourToBuffer instead.
  */
 async function fetchYoutubeThumbnailJpeg(videoId) {
-  const qualities = ['maxresdefault', 'sddefault', 'hqdefault', 'mqdefault']
+  const qualities = ['maxresdefault', 'sddefault', 'hqdefault']
 
   for (const quality of qualities) {
     const res = await fetch(`https://i.ytimg.com/vi/${videoId}/${quality}.jpg`, {
@@ -15,7 +15,8 @@ async function fetchYoutubeThumbnailJpeg(videoId) {
 
     const buffer = Buffer.from(await res.arrayBuffer())
     // YouTube returns a tiny placeholder when maxres is unavailable.
-    if (buffer.length > 8000 && buffer[0] === 0xff && buffer[1] === 0xd8) {
+    const minBytes = quality === 'maxresdefault' ? 12_000 : 6_000
+    if (buffer.length > minBytes && buffer[0] === 0xff && buffer[1] === 0xd8) {
       return buffer
     }
   }

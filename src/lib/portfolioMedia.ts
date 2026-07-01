@@ -2,8 +2,8 @@ import { getTourThumbPublicUrl, isSupabaseConfigured } from './supabase'
 
 export const GENERIC_PORTFOLIO_THUMBNAIL = '/portfolio-placeholder.svg'
 
-export const PORTFOLIO_THUMB_WIDTH = 400
-export const PORTFOLIO_THUMB_HEIGHT = 300
+export const PORTFOLIO_THUMB_WIDTH = 560
+export const PORTFOLIO_THUMB_HEIGHT = 420
 
 /** Request smaller, modern formats from common CDNs when possible */
 export function optimizeThumbnailUrl(url: string): string {

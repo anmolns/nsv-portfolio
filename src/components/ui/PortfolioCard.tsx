@@ -49,22 +49,22 @@ export function PortfolioCard({
         >
           {/* Front */}
           <div
-            className="portfolio-card-face portfolio-card-front absolute inset-0"
+            className="portfolio-card-face portfolio-card-front absolute inset-0 overflow-hidden"
             style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
           >
-            <div className="relative z-10 flex h-full min-h-0 flex-col items-center justify-center gap-4 px-4 py-5 text-center sm:gap-5 sm:px-5 max-lg:gap-1.5 max-lg:px-3 max-lg:py-4 max-lg:sm:gap-2">
+            <div className="relative z-10 flex h-full min-h-0 flex-col items-center justify-center gap-4 px-4 py-5 text-center sm:gap-5 sm:px-5 lg:gap-2 lg:px-4 lg:py-3.5 max-lg:gap-1.5 max-lg:px-3 max-lg:py-4 max-lg:sm:gap-2">
               {builder && (
-                <p className="line-clamp-2 text-[1.15rem] font-semibold uppercase leading-tight tracking-[0.14em] text-white/75 sm:text-[1.22rem] lg:text-[1.3rem] max-lg:text-[0.7rem] max-lg:leading-snug max-lg:tracking-[0.12em] max-lg:sm:text-xs max-lg:md:text-sm">
+                <p className="portfolio-card-line-clamp line-clamp-2 w-full text-[1.15rem] font-semibold uppercase leading-snug tracking-[0.14em] text-white/75 sm:text-[1.22rem] lg:line-clamp-1 lg:text-[1.05rem] lg:tracking-[0.1em] xl:text-[1.15rem] max-lg:text-[0.7rem] max-lg:leading-snug max-lg:tracking-[0.12em] max-lg:sm:text-xs max-lg:md:text-sm">
                   {builder}
                 </p>
               )}
 
-              <h3 className="font-display line-clamp-2 break-words text-[1.48rem] font-extrabold leading-[1.1] tracking-[-0.02em] text-white sm:text-[1.62rem] lg:text-[1.75rem] max-lg:text-base max-lg:leading-snug max-lg:tracking-tight max-lg:sm:text-lg max-lg:md:text-xl">
+              <h3 className="portfolio-card-line-clamp font-display line-clamp-2 w-full break-words text-[1.48rem] font-extrabold leading-snug tracking-[-0.02em] text-white sm:text-[1.62rem] lg:text-[1.55rem] xl:text-[1.65rem] max-lg:text-base max-lg:leading-snug max-lg:tracking-tight max-lg:sm:text-lg max-lg:md:text-xl">
                 {project}
               </h3>
 
               {city && (
-                <p className="line-clamp-1 text-[1.18rem] font-normal tracking-wide text-white/70 sm:text-[1.26rem] lg:text-[1.32rem] max-lg:text-xs max-lg:sm:text-sm max-lg:md:text-base">
+                <p className="portfolio-card-line-clamp line-clamp-1 w-full text-[1.18rem] font-normal leading-snug tracking-wide text-white/70 sm:text-[1.26rem] lg:text-[1.1rem] xl:text-[1.2rem] max-lg:text-xs max-lg:sm:text-sm max-lg:md:text-base">
                   {city}
                 </p>
               )}
