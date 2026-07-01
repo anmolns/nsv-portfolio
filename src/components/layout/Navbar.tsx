@@ -106,14 +106,14 @@ export function Navbar({ onCallbackClick }: NavbarProps) {
             type="button"
             onClick={onCallbackClick}
             className={blueBtnClass}
-            aria-label="Get callback"
+            aria-label="Get Callback"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             data-cursor="pointer"
           >
             <CallbackIcon className="h-4 w-4 min-[400px]:hidden" />
             <span className="hidden min-[400px]:inline sm:hidden">Callback</span>
-            <span className="hidden sm:inline">Get callback</span>
+            <span className="hidden sm:inline">Get Callback</span>
           </motion.button>
         </div>
       </nav>
