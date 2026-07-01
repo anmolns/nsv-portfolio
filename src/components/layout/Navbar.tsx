@@ -99,7 +99,7 @@ export function Navbar({ onCallbackClick }: NavbarProps) {
             data-cursor="pointer"
           >
             <PhoneIcon className="h-4 w-4 min-[400px]:hidden" />
-            <span className="hidden min-[400px]:inline sm:hidden">{contact.phoneDisplayCompact}</span>
+            <span className="hidden min-[400px]:inline  sm:hidden">{contact.phoneDisplayCompact}</span>
             <span className="hidden sm:inline">{contact.phoneDisplay}</span>
           </motion.a>
           <motion.button
