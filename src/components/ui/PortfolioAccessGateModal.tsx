@@ -1,14 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  sendPortfolioEmailOtp,
-  verifyPortfolioEmailOtp,
-} from '../../api/portfolioOtp'
+import { sendPortfolioOtp, verifyPortfolioOtp } from '../../api/portfolioOtp'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
 import { savePortfolioAccess } from '../../lib/portfolioAccess'
+import { executeRecaptcha, isRecaptchaConfigured, preloadRecaptcha } from '../../lib/recaptcha'
+import { DEFAULT_PHONE_COUNTRY, findPhoneCountry } from '../../data/phoneCountries'
+import { toE164, validateNationalNumber } from '../../lib/phone'
 import { cn } from '../../lib/utils'
 import { Logo } from './Logo'
 import { OtpInput } from './OtpInput'
+import { PhoneInput } from './PhoneInput'
 
 interface PortfolioAccessGateModalProps {
   pendingProjectName?: string | null
@@ -20,6 +21,7 @@ type Step = 'details' | 'otp'
 interface FormState {
   name: string
   email: string
+  countryCode: string
   phone: string
 }
 
@@ -27,6 +29,7 @@ interface FormErrors {
   name?: string
   email?: string
   phone?: string
+  captcha?: string
   otp?: string
   submit?: string
 }
@@ -38,11 +41,9 @@ function validateDetails(data: FormState): FormErrors {
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
     errors.email = 'Enter a valid email'
   }
-  const digits = data.phone.replace(/\D/g, '')
-  if (!digits) errors.phone = 'Phone number is required'
-  else if (digits.length !== 10 && !(digits.length === 12 && digits.startsWith('91'))) {
-    errors.phone = 'Enter a valid 10-digit mobile number'
-  }
+  const country = findPhoneCountry(data.countryCode)
+  const phoneError = validateNationalNumber(country, data.phone)
+  if (phoneError) errors.phone = phoneError
   return errors
 }
 
@@ -51,17 +52,25 @@ export function PortfolioAccessGateModal({
   onValidated,
 }: PortfolioAccessGateModalProps) {
   const [step, setStep] = useState<Step>('details')
-  const [data, setData] = useState<FormState>({ name: '', email: '', phone: '' })
+  const [data, setData] = useState<FormState>({
+    name: '',
+    email: '',
+    countryCode: DEFAULT_PHONE_COUNTRY.code,
+    phone: '',
+  })
   const [otp, setOtp] = useState('')
   const [emailMasked, setEmailMasked] = useState('')
-  const [phoneMasked, setPhoneMasked] = useState('')
-  const [whatsappSent, setWhatsappSent] = useState(false)
-  const [whatsappError, setWhatsappError] = useState<string | null>(null)
+  // const [phoneMasked, setPhoneMasked] = useState('')
+  // const [whatsappSent, setWhatsappSent] = useState(false)
+  // const [whatsappError, setWhatsappError] = useState<string | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [resendIn, setResendIn] = useState(0)
   useEffect(() => {
     pauseSmoothScroll()
+    void preloadRecaptcha().catch(() => {
+      // First click will retry; avoid noisy UI on open
+    })
     return () => resumeSmoothScroll()
   }, [])
 
@@ -71,7 +80,7 @@ export function PortfolioAccessGateModal({
     return () => window.clearTimeout(timer)
   }, [resendIn])
 
-  const update = (key: keyof FormState, value: string) => {
+  const update = (key: 'name' | 'email' | 'phone', value: string) => {
     setData((prev) => ({ ...prev, [key]: value }))
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined, submit: undefined }))
   }
@@ -94,16 +103,33 @@ export function PortfolioAccessGateModal({
     setErrors({})
 
     try {
-      const result = await sendPortfolioEmailOtp({
+      let captchaToken: string | null = null
+      if (isRecaptchaConfigured()) {
+        captchaToken = await executeRecaptcha('portfolio_otp')
+        if (!captchaToken) {
+          setErrors({ submit: 'Security check failed. Please try again.' })
+          return
+        }
+      }
+
+      const result = await sendPortfolioOtp({
         name: data.name,
-        email: data.email,
-        phone: data.phone,
+        email: data.email.trim(),
+        phone: toE164(findPhoneCountry(data.countryCode), data.phone),
         projectName: pendingProjectName,
+        captchaToken,
       })
+
+      // WhatsApp OTP (disabled — email OTP active)
+      // if (!result.whatsappSent) {
+      //   setErrors({ submit: whatsappFailureMessage(result.whatsappError ?? null) })
+      //   return
+      // }
+
       setEmailMasked(result.emailMasked)
-      setPhoneMasked(result.phoneMasked)
-      setWhatsappSent(result.whatsappSent)
-      setWhatsappError(result.whatsappError ?? null)
+      // setPhoneMasked(result.phoneMasked)
+      // setWhatsappSent(result.whatsappSent)
+      // setWhatsappError(result.whatsappError ?? null)
       setResendIn(60)
       setOtp('')
       setStep('otp')
@@ -133,13 +159,13 @@ export function PortfolioAccessGateModal({
     setErrors({})
 
     try {
-      const profile = await verifyPortfolioEmailOtp({
+      const profile = await verifyPortfolioOtp({
         email: data.email.trim(),
+        // phone: toE164(findPhoneCountry(data.countryCode), data.phone),
         otp: otp.trim(),
       })
       savePortfolioAccess({
         name: profile.name,
-        email: profile.email,
         phone: profile.phone,
         accessToken: profile.accessToken,
         expiresAt: profile.expiresAt,
@@ -157,7 +183,7 @@ export function PortfolioAccessGateModal({
 
   return createPortal(
     <div
-        className="portfolio-access-gate fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
+        className="portfolio-access-gate fixed inset-0 z-120 flex items-center justify-center p-4 sm:p-6"
         role="presentation"
       >
         <div className="portfolio-access-gate-backdrop absolute inset-0" aria-hidden />
@@ -187,43 +213,6 @@ export function PortfolioAccessGateModal({
                 />
               </div>
             </div>
-            <h2
-              id="portfolio-access-title"
-              className="mt-3 font-display text-xl sm:text-2xl font-bold text-white"
-            >
-              {step === 'otp' ? 'Check your email & WhatsApp' : 'View our work'}
-            </h2>
-            <p className="mt-1.5 text-sm text-white/75 leading-relaxed">
-              {step === 'otp' ? (
-                <>
-                  We sent a 6-digit code to{' '}
-                  <span className="text-white/90">{emailMasked || 'your email'}</span>
-                  {whatsappSent && phoneMasked ? (
-                    <>
-                      {' '}
-                      and WhatsApp{' '}
-                      <span className="text-white/90">{phoneMasked}</span>.
-                    </>
-                  ) : (
-                    '.'
-                  )}
-                  {!whatsappSent ? (
-                    <span className="mt-1 block text-white/60">
-                      {whatsappError?.toLowerCase().includes('invalid end point') ||
-                      whatsappError?.toLowerCase().includes('invalid endpoint')
-                        ? 'WhatsApp failed — set AUTHYO_AUTHORIZED_ENDPOINT=http://localhost:5173 in .env.local and Authyo dashboard, then run npm run dev:all.'
-                        : whatsappError?.includes('relay')
-                          ? 'WhatsApp relay offline — run npm run dev:all (needs import server on :3001).'
-                          : whatsappError ?? 'WhatsApp delivery failed — use the code from your email.'}
-                    </span>
-                  ) : null}
-                </>
-              ) : pendingProjectName ? (
-                `Verify your details to watch ${pendingProjectName}.`
-              ) : (
-                'Verify your details to explore our portfolio.'
-              )}
-            </p>
           </div>
 
           <div className="px-6 py-6 sm:px-7 sm:py-7">
@@ -262,16 +251,21 @@ export function PortfolioAccessGateModal({
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate">
                     Phone
+                    {/* Phone (WhatsApp) */}
                   </label>
-                  <input
-                    type="tel"
-                    value={data.phone}
-                    onChange={(e) => update('phone', e.target.value)}
-                    placeholder="+91 98765 43210"
-                    autoComplete="tel"
-                    className={inputClass(!!errors.phone)}
+                  <PhoneInput
+                    countryCode={data.countryCode}
+                    nationalNumber={data.phone}
+                    onCountryChange={(countryCode) => {
+                      setData((prev) => ({ ...prev, countryCode }))
+                      if (errors.phone) {
+                        setErrors((prev) => ({ ...prev, phone: undefined, submit: undefined }))
+                      }
+                    }}
+                    onNationalNumberChange={(phone) => update('phone', phone)}
+                    error={errors.phone}
+                    disabled={submitting}
                   />
-                  {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
                 </div>
 
                 {errors.submit && (
@@ -285,15 +279,20 @@ export function PortfolioAccessGateModal({
                   disabled={submitting}
                   className="mt-1 w-full rounded-xl bg-navy py-3 text-sm font-semibold text-white shadow-lg shadow-navy/15 hover:bg-navy-light transition-colors disabled:opacity-50"
                 >
-                  {submitting ? 'Sending code…' : 'Send verification code'}
+                  {submitting ? 'Sending Code…' : 'Send Verification Code'}
                 </button>
               </form>
             ) : (
               <form onSubmit={handleOtpSubmit} className="space-y-5">
                 <div>
-                  <label className="mb-3 block text-center text-xs font-semibold uppercase tracking-wide text-slate">
-                    Enter verification code
+                  <label className="mb-1.5 block text-center text-xs font-semibold uppercase tracking-wide text-slate">
+                    Enter Verification Code
                   </label>
+                  <p className="mb-3 text-center text-xs text-slate">
+                    {emailMasked
+                      ? `Check your email ${emailMasked} for the OTP`
+                      : 'Check your email for the OTP'}
+                  </p>
                   <OtpInput
                     value={otp}
                     onChange={(value) => {
@@ -321,36 +320,21 @@ export function PortfolioAccessGateModal({
                   disabled={submitting || otp.length < 6}
                   className="w-full rounded-xl bg-navy py-3 text-sm font-semibold text-white shadow-lg shadow-navy/15 hover:bg-navy-light transition-colors disabled:opacity-50"
                 >
-                  {submitting ? 'Verifying…' : 'Verify & continue'}
+                  {submitting ? 'Verifying…' : 'Verify & Continue'}
                 </button>
 
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  {/* <button
-                    type="button"
-                    onClick={() => {
-                      setStep('details')
-                      setOtp('')
-                      setErrors({})
-                    }}
-                    className="text-slate hover:text-navy transition-colors"
-                  >
-                    ← Edit details
-                  </button> */}
+                <div className="flex flex-col items-center gap-3 text-xs">
                   <button
                     type="button"
                     disabled={submitting || resendIn > 0}
                     onClick={() => void sendOtp()}
                     className="font-medium text-cyan hover:underline disabled:opacity-50 disabled:no-underline"
                   >
-                    {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+                    {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend Code…'}
                   </button>
                 </div>
               </form>
             )}
-
-            <p className="mt-6 text-center text-[11px] leading-relaxed text-slate-light">
-              We use your details to verify access and share portfolio updates.
-            </p>
           </div>
         </div>
       </div>,

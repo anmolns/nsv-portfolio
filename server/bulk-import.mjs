@@ -65,6 +65,11 @@ async function uniqueTourId(adminClient, base) {
   }
 }
 
+/**
+ * Admin list sorts by sort_order asc, so an imported batch needs values below the current
+ * minimum to land at the top. Reserving `count` slots keeps the batch in CSV order.
+ * Public site ordering is unaffected — it sorts by upload / publish date, not sort_order.
+ */
 async function getNextSortOrder(adminClient) {
   const { data } = await adminClient
     .from('portfolio_items')

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { getPortfolioThumbnail } from '../../lib/portfolioMedia'
 import {
@@ -11,22 +11,34 @@ import {
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
 import type { PortfolioItemRow } from '../types'
 
-type MediaFilter = 'all' | 'video' | 'virtual-tour'
+type MediaTab = 'virtual-tour' | 'video'
 type StatusFilter = 'all' | 'published' | 'draft'
+
+const MEDIA_TABS: { value: MediaTab; label: string }[] = [
+  { value: 'virtual-tour', label: 'Virtual tours' },
+  { value: 'video', label: 'Videos' },
+]
 
 export function ToursPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const focusId = searchParams.get('focus')
   const [tours, setTours] = useState<PortfolioItemRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [stateFilter, setStateFilter] = useState('all')
-  const [mediaFilter, setMediaFilter] = useState<MediaFilter>('all')
+  const [mediaTab, setMediaTab] = useState<MediaTab>(
+    searchParams.get('tab') === 'video' ? 'video' : 'virtual-tour',
+  )
+  // Once the tab comes from the URL, a click, or a focused row, stop auto-picking it.
+  const tabPinned = useRef(searchParams.get('tab') !== null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [savingOrder, setSavingOrder] = useState(false)
+  const [highlightId, setHighlightId] = useState<string | null>(focusId)
 
   const load = () => {
     setLoading(true)
@@ -39,6 +51,54 @@ export function ToursPage() {
   useEffect(() => {
     load()
   }, [])
+
+  // No explicit tab? Open the one holding the most recently added item.
+  useEffect(() => {
+    if (tabPinned.current || loading || tours.length === 0) return
+
+    // Arriving from a save: the focused row decides the tab instead.
+    if (focusId) {
+      tabPinned.current = true
+      return
+    }
+
+    const latest = tours.reduce((newest, tour) =>
+      (tour.created_at ?? '') > (newest.created_at ?? '') ? tour : newest,
+    )
+    setMediaTab(latest.media_type)
+    tabPinned.current = true
+  }, [focusId, loading, tours])
+
+  useEffect(() => {
+    if (!focusId || loading || tours.length === 0) return
+
+    // A saved item may belong to the tab that isn't showing — open that one first.
+    const target = tours.find((t) => t.id === focusId)
+    if (target && target.media_type !== mediaTab) {
+      tabPinned.current = true
+      setMediaTab(target.media_type)
+      return
+    }
+
+    setHighlightId(focusId)
+    const row = document.getElementById(`tour-row-${focusId}`)
+    row?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('focus')
+    setSearchParams(next, { replace: true })
+
+    const timer = window.setTimeout(() => setHighlightId(null), 3500)
+    return () => window.clearTimeout(timer)
+  }, [focusId, loading, tours, mediaTab, searchParams, setSearchParams])
+
+  const selectTab = (tab: MediaTab) => {
+    setMediaTab(tab)
+    tabPinned.current = true
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', tab)
+    setSearchParams(next, { replace: true })
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -57,24 +117,40 @@ export function ToursPage() {
       }
       if (stateFilter === 'none' && t.state) return false
       if (stateFilter !== 'all' && stateFilter !== 'none' && t.state !== stateFilter) return false
-      if (mediaFilter !== 'all' && t.media_type !== mediaFilter) return false
+      if (t.media_type !== mediaTab) return false
       if (statusFilter === 'published' && !t.is_published) return false
       if (statusFilter === 'draft' && t.is_published) return false
       return true
     })
-  }, [tours, search, stateFilter, mediaFilter, statusFilter])
+  }, [tours, search, stateFilter, mediaTab, statusFilter])
 
-  const noStateCount = useMemo(() => tours.filter((t) => !t.state).length, [tours])
+  const tabCounts = useMemo(
+    () => ({
+      'virtual-tour': tours.filter((t) => t.media_type === 'virtual-tour').length,
+      video: tours.filter((t) => t.media_type === 'video').length,
+    }),
+    [tours],
+  )
+
+  const tabTotal = tabCounts[mediaTab]
+
+  const noStateCount = useMemo(
+    () => tours.filter((t) => t.media_type === mediaTab && !t.state).length,
+    [tours, mediaTab],
+  )
 
   const filterStates = useMemo(() => {
-    const fromData = new Set(tours.map((t) => t.state).filter(Boolean) as string[])
+    const fromData = new Set(
+      tours.filter((t) => t.media_type === mediaTab).map((t) => t.state).filter(Boolean) as string[],
+    )
     return [...fromData].sort((a, b) => a.localeCompare(b))
-  }, [tours])
+  }, [tours, mediaTab])
 
+  // Virtual tours are ordered by newest added, so only the Videos tab has saved positions.
   const canReorder =
+    mediaTab === 'video' &&
     !search.trim() &&
     stateFilter === 'all' &&
-    mediaFilter === 'all' &&
     statusFilter === 'all'
 
   const handleDelete = async (id: string, name: string) => {
@@ -117,7 +193,10 @@ export function ToursPage() {
     setDragId(null)
     setSavingOrder(true)
     try {
-      await reorderTours(next.map((t) => t.id))
+      // Only videos have a stored position; VR rows keep their sort_order untouched.
+      await reorderTours(
+        next.filter((t) => t.media_type !== 'virtual-tour').map((t) => t.id),
+      )
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Reorder failed')
       load()
@@ -136,9 +215,11 @@ export function ToursPage() {
         subtitle={
           savingOrder
             ? 'Saving order…'
-            : canReorder
-              ? `${filtered.length} tours · drag ⠿ to reorder`
-              : `${filtered.length} of ${tours.length} tours · clear filters to reorder`
+            : mediaTab === 'virtual-tour'
+              ? `${filtered.length} virtual tours · newest added first`
+              : canReorder
+                ? `${filtered.length} videos · drag ⠿ to reorder`
+                : `${filtered.length} of ${tabTotal} videos · clear filters to reorder`
         }
         action={
           <Link
@@ -156,8 +237,36 @@ export function ToursPage() {
         </p>
       )}
 
+      <div className="mb-5 flex flex-wrap gap-2">
+        {MEDIA_TABS.map(({ value, label }) => {
+          const active = mediaTab === value
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => selectTab(value)}
+              aria-pressed={active}
+              className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-colors ${
+                active
+                  ? 'bg-cyan text-navy shadow-lg shadow-cyan/20'
+                  : 'border border-border bg-white text-slate hover:text-navy'
+              }`}
+            >
+              {label}
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  active ? 'bg-navy/10 text-navy' : 'bg-navy/5 text-slate-light'
+                }`}
+              >
+                {tabCounts[value]}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
       <AdminCard className="p-4 sm:p-5 mb-6 overflow-visible">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -178,15 +287,6 @@ export function ToursPage() {
                 {state}
               </option>
             ))}
-          </select>
-          <select
-            value={mediaFilter}
-            onChange={(e) => setMediaFilter(e.target.value as MediaFilter)}
-            className={selectClass}
-          >
-            <option value="all">All types</option>
-            <option value="video">Video</option>
-            <option value="virtual-tour">Virtual tour</option>
           </select>
           <select
             value={statusFilter}
@@ -241,13 +341,18 @@ export function ToursPage() {
                 {filtered.map((tour) => (
                   <tr
                     key={tour.id}
+                    id={`tour-row-${tour.id}`}
                     draggable={canReorder}
                     onDragStart={() => canReorder && setDragId(tour.id)}
                     onDragEnd={() => setDragId(null)}
                     onDragOver={(e) => canReorder && e.preventDefault()}
                     onDrop={() => canReorder && handleDrop(tour.id)}
                     className={`border-b border-border last:border-0 transition-colors ${
-                      dragId === tour.id ? 'bg-cyan/5 opacity-60' : 'hover:bg-off-white/50'
+                      highlightId === tour.id
+                        ? 'bg-cyan/15 ring-2 ring-inset ring-cyan/40'
+                        : dragId === tour.id
+                          ? 'bg-cyan/5 opacity-60'
+                          : 'hover:bg-off-white/50'
                     }`}
                   >
                     <td
@@ -265,6 +370,8 @@ export function ToursPage() {
                             tour.updated_at ?? tour.id,
                           )}
                           alt=""
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover"
                         />
                       </div>

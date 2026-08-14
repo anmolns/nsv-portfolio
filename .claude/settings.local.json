@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(npx --version)",
+      "Read(//a//**)",
+      "Bash(npx --yes create-next-app@latest nsv-crm --typescript --tailwind --app --src-dir --eslint --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(npm run *)",
+      "Bash(git mv *)",
+      "Bash(mv src/middleware.ts src/proxy.ts)",
+      "Bash(npx --yes supabase --version)",
+      "Bash(npx supabase *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Read(//tmp/**)",
+      "Bash(python3 *)",
+      "Bash(curl -s -X POST __TRACKED_VAR__/functions/v1/portfolio-otp-verify -H 'Authorization: Bearer __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{\"phone\":\"+919888888888\",\"otp\":\"650675\"}')",
+      "Bash(curl -s -X POST __TRACKED_VAR__/functions/v1/portfolio-viewer -H 'Authorization: Bearer __TRACKED_VAR__' -H 'x-access-token: __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{\"itemId\":\"test\"}')",
+      "Bash(curl -s -X POST __TRACKED_VAR__/functions/v1/portfolio-viewer -H 'Authorization: Bearer __TRACKED_VAR__' -H 'apikey: __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{\"itemId\":\"test\"}')",
+      "Bash(curl -s -X POST __TRACKED_VAR__/functions/v1/portfolio-viewer -H 'Authorization: Bearer __TRACKED_VAR__' -H 'apikey: __TRACKED_VAR__' -H 'Content-Type: application/json' -d '{\"itemId\":\"yt-x772nz2sxpe\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173)",
+      "Bash(npm ls *)",
+      "Bash(node \"C:\\\\Users\\\\Admin\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\a--nsvportfolio-1\\\\b1e27006-62ef-4513-81a6-3743806d80c2\\\\scratchpad\\\\shot.mjs\")",
+      "Bash(node scratch-shot.mjs)",
+      "Bash(node -e ' *)",
+      "Bash(grep -o '.\\\\{0,20\\\\}blur\\(9px\\).\\\\{0,200\\\\}' dist/assets/index-DFE52XqK.css)",
+      "Bash(npx browserslist *)",
+      "Bash(node -e *)",
+      "Bash(curl -sf http://localhost:5173)",
+      "WebSearch",
+      "WebFetch(domain:supabase.com)",
+      "Bash(npx tsc *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git check-ignore *)",
+      "Bash(rm -f api/authyo/send-otp.mjs server/lib/authyo-client.mjs server/lib/whatsapp-dispatch.mjs supabase/functions/_shared/whatsapp-dispatch.ts scripts/debug-authyo.mjs scripts/test-authyo.mjs)",
+      "Bash(rmdir api/authyo)",
+      "Bash(npx eslint *)"
+    ]
+  }
+}

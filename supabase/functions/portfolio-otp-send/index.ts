@@ -9,10 +9,14 @@ import {
   maskEmail,
   maskPhone,
   normalizeEmail,
-  normalizeIndianPhone,
+  normalizePhoneE164,
   sendEmailOtp,
 } from '../_shared/portfolio-otp.ts'
-import { createWhatsappDispatchToken } from '../_shared/whatsapp-dispatch.ts'
+import { verifyRecaptchaV3 } from '../_shared/recaptcha.ts'
+// WhatsApp OTP (disabled — email OTP active)
+// import { createWhatsappDispatchToken } from '../_shared/whatsapp-dispatch.ts'
+// Meta WhatsApp Cloud API (disabled — Authyo is the WhatsApp provider again)
+// import { sendWhatsappOtpViaMeta } from '../_shared/portfolio-otp.ts'
 
 const OTP_TTL_SECONDS = 300
 const MAX_SENDS_PER_HOUR = 5
@@ -24,6 +28,7 @@ interface SendBody {
   phone?: string
   projectName?: string | null
   siteOrigin?: string | null
+  captchaToken?: string | null
 }
 
 Deno.serve(async (req) => {
@@ -39,12 +44,15 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as SendBody
     const name = body.name?.trim() ?? ''
     const email = normalizeEmail(body.email ?? '')
-    const phoneE164 = normalizeIndianPhone(body.phone ?? '')
+    const phoneE164 = normalizePhoneE164(body.phone ?? '')
     const projectName = body.projectName?.trim() || null
 
     if (!name) return errorResponse('Name is required')
     if (!email || !isValidEmail(email)) return errorResponse('A valid email is required')
-    if (!phoneE164) return errorResponse('Enter a valid 10-digit Indian mobile number')
+    if (!phoneE164) return errorResponse('Enter a valid mobile number with country code')
+
+    const captcha = await verifyRecaptchaV3(body.captchaToken, 'portfolio_otp', req)
+    if (!captcha.ok) return errorResponse(captcha.error, 400)
 
     const supabase = createServiceClient()
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
@@ -121,11 +129,25 @@ Deno.serve(async (req) => {
       throw err
     }
 
-    const whatsappDispatchToken = await createWhatsappDispatchToken({
-      phoneE164,
-      otp,
-      ttlSeconds: OTP_TTL_SECONDS,
-    })
+    // WhatsApp OTP (disabled — email OTP active)
+    // const whatsappDispatchToken = await createWhatsappDispatchToken({
+    //   phoneE164,
+    //   otp,
+    //   ttlSeconds: OTP_TTL_SECONDS,
+    // })
+
+    // Meta WhatsApp Cloud API (disabled — Authyo is the WhatsApp provider again)
+    // let whatsappSent = false
+    // try {
+    //   const result = await sendWhatsappOtpViaMeta(phoneE164, otp)
+    //   whatsappSent = result.sent
+    // } catch (err) {
+    //   // Email already succeeded — don't fail the whole request over WhatsApp.
+    //   console.warn(
+    //     '[portfolio-otp-send] WhatsApp send failed:',
+    //     err instanceof Error ? err.message : err,
+    //   )
+    // }
 
     await supabase
       .from('portfolio_otp_challenges')
@@ -139,8 +161,9 @@ Deno.serve(async (req) => {
       expiresIn: OTP_TTL_SECONDS,
       emailMasked: maskEmail(email),
       phoneMasked: maskPhone(phoneE164),
-      whatsappSent: false,
-      whatsappDispatchToken,
+      emailSent: true,
+      // whatsappSent: false,
+      // whatsappDispatchToken,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to send OTP'

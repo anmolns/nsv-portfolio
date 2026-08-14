@@ -330,6 +330,77 @@ export async function sendWhatsappOtpViaAuthyo(
   throw new Error(`Authyo: ${lastDetail}`)
 }
 
+// Meta WhatsApp Cloud API (disabled — Authyo is the WhatsApp provider again).
+// Needs WHATSAPP_TOKEN (permanent system user token), WHATSAPP_PHONE_NUMBER_ID,
+// WHATSAPP_TEMPLATE_NAME, WHATSAPP_TEMPLATE_LANG in Supabase edge secrets.
+// @see docs/WHATSAPP_CLOUD_API_SETUP.md
+//
+// interface MetaWhatsappSendResponse {
+//   messages?: Array<{ id?: string }>
+//   error?: { message?: string; code?: number; error_subcode?: number; type?: string }
+// }
+//
+// export async function sendWhatsappOtpViaMeta(
+//   phoneE164: string,
+//   otp: string,
+// ): Promise<{ sent: boolean; messageId: string | null }> {
+//   const devMode = Deno.env.get('WHATSAPP_DEV_MODE') === 'true'
+//   const token = Deno.env.get('WHATSAPP_TOKEN')?.trim()
+//   const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')?.trim()
+//   const templateName = Deno.env.get('WHATSAPP_TEMPLATE_NAME')?.trim()
+//   const templateLang = Deno.env.get('WHATSAPP_TEMPLATE_LANG')?.trim() || 'en'
+//
+//   if (devMode) {
+//     console.log(`[portfolio-otp][dev] WhatsApp OTP for ${phoneE164}: ${otp}`)
+//     return { sent: true, messageId: null }
+//   }
+//
+//   if (!token || !phoneNumberId || !templateName) {
+//     console.warn('[portfolio-otp] Meta WhatsApp not configured — skipping WhatsApp OTP')
+//     return { sent: false, messageId: null }
+//   }
+//
+//   const to = phoneE164.replace(/\D/g, '')
+//
+//   const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+//     method: 'POST',
+//     headers: {
+//       Authorization: `Bearer ${token}`,
+//       'Content-Type': 'application/json',
+//     },
+//     body: JSON.stringify({
+//       messaging_product: 'whatsapp',
+//       to,
+//       type: 'template',
+//       template: {
+//         name: templateName,
+//         language: { code: templateLang },
+//         components: [
+//           {
+//             type: 'body',
+//             parameters: [{ type: 'text', text: otp }],
+//           },
+//           // If the approved template also has a "Copy code" quick-reply button,
+//           // Meta requires a matching button component, e.g.:
+//           // { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: otp }] },
+//         ],
+//       },
+//     }),
+//   })
+//
+//   const payload = (await res.json().catch(() => ({}))) as MetaWhatsappSendResponse
+//
+//   if (!res.ok || payload.error) {
+//     const detail = payload.error?.message ?? `HTTP ${res.status} from Meta`
+//     console.warn('[portfolio-otp] Meta WhatsApp error:', detail)
+//     throw new Error(`WhatsApp: ${detail}`)
+//   }
+//
+//   const messageId = payload.messages?.[0]?.id ?? null
+//   console.log(`[portfolio-otp] Meta WhatsApp sent → ${to} (${messageId ?? 'no id'})`)
+//   return { sent: true, messageId }
+// }
+
 interface ResendError {
   message?: string
 }

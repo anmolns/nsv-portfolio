@@ -1,4 +1,6 @@
 import { slugify } from '../../lib/utils'
+import { compressThumbnailFile } from '../../lib/compressThumbnail'
+import { thumbStoragePath } from '../../lib/portfolioMedia'
 import { getSupabase } from '../../lib/supabase'
 import { canonicalCityName } from '../lib/cityNames'
 import type {
@@ -88,16 +90,44 @@ export async function updateCityState(id: string, state: string): Promise<void> 
   if (error) throw new Error(error.message)
 }
 
+/** Supabase caps a single query at 1000 rows by default — page past that. */
+const ADMIN_PAGE_SIZE = 1000
+
+/**
+ * Display-only ordering for the admin tabs: virtual tours come back newest-added first
+ * (like the public site sorts them), videos stay exactly as queried (sort_order asc) so
+ * their drag positions hold. No sort_order values are written.
+ */
+function withVirtualToursNewestFirst(rows: PortfolioItemRow[]): PortfolioItemRow[] {
+  const virtualTours = rows.filter((r) => r.media_type === 'virtual-tour')
+  const videos = rows.filter((r) => r.media_type !== 'virtual-tour')
+
+  virtualTours.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+
+  return [...virtualTours, ...videos]
+}
+
 export async function fetchAdminTours(): Promise<PortfolioItemRow[]> {
   const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('portfolio_items')
-    .select('*, cities(name)')
-    .order('sort_order')
-    .order('name')
+  const all: PortfolioItemRow[] = []
 
-  if (error) throw new Error(error.message)
-  return (data ?? []) as PortfolioItemRow[]
+  for (let from = 0; ; from += ADMIN_PAGE_SIZE) {
+    const to = from + ADMIN_PAGE_SIZE - 1
+    const { data, error } = await supabase
+      .from('portfolio_items')
+      .select('*, cities(name)')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to)
+
+    if (error) throw new Error(error.message)
+    const batch = (data ?? []) as PortfolioItemRow[]
+    all.push(...batch)
+    if (batch.length < ADMIN_PAGE_SIZE) break
+  }
+
+  return withVirtualToursNewestFirst(all)
 }
 
 export async function fetchAdminTour(id: string): Promise<PortfolioItemRow | null> {
@@ -114,27 +144,66 @@ export async function fetchAdminTour(id: string): Promise<PortfolioItemRow | nul
 
 export async function fetchPortfolioStats(): Promise<PortfolioStats> {
   const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('portfolio_items')
-    .select('media_type, is_published')
 
-  if (error) throw new Error(error.message)
+  const [totalRes, videosRes, virtualToursRes, publishedRes] = await Promise.all([
+    supabase.from('portfolio_items').select('id', { count: 'exact', head: true }),
+    supabase
+      .from('portfolio_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('media_type', 'video'),
+    supabase
+      .from('portfolio_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('media_type', 'virtual-tour'),
+    supabase
+      .from('portfolio_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_published', true),
+  ])
 
-  const rows = (data ?? []) as Pick<PortfolioItemRow, 'media_type' | 'is_published'>[]
+  for (const res of [totalRes, videosRes, virtualToursRes, publishedRes]) {
+    if (res.error) throw new Error(res.error.message)
+  }
+
   return {
-    total: rows.length,
-    videos: rows.filter((r) => r.media_type === 'video').length,
-    virtualTours: rows.filter((r) => r.media_type === 'virtual-tour').length,
-    published: rows.filter((r) => r.is_published).length,
+    total: totalRes.count ?? 0,
+    videos: videosRes.count ?? 0,
+    virtualTours: virtualToursRes.count ?? 0,
+    published: publishedRes.count ?? 0,
   }
 }
 
 export async function createTour(
   item: Omit<PortfolioItemRow, 'created_at' | 'updated_at' | 'cities'>,
-): Promise<void> {
+): Promise<string> {
   const supabase = getSupabase()
-  const { error } = await supabase.from('portfolio_items').insert(item)
-  if (error) throw new Error(error.message)
+  const baseId = slugify(item.id.trim()) || 'tour'
+  const id = await uniqueTourId(baseId)
+
+  let sortOrder = item.sort_order
+  if (sortOrder == null || sortOrder === 0) {
+    const { data: last } = await supabase
+      .from('portfolio_items')
+      .select('sort_order')
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    sortOrder = (last?.sort_order ?? 0) + 1
+  }
+
+  const { error } = await supabase
+    .from('portfolio_items')
+    .insert({ ...item, id, sort_order: sortOrder })
+  if (error) {
+    if (error.message.includes('portfolio_items_pkey') || error.code === '23505') {
+      throw new Error(
+        `A tour with ID "${id}" already exists. Change the URL slug or edit the existing item.`,
+      )
+    }
+    throw new Error(error.message)
+  }
+
+  return id
 }
 
 export async function updateTour(
@@ -142,7 +211,12 @@ export async function updateTour(
   item: Partial<Omit<PortfolioItemRow, 'id' | 'created_at' | 'updated_at' | 'cities'>>,
 ): Promise<void> {
   const supabase = getSupabase()
-  const { error } = await supabase.from('portfolio_items').update(item).eq('id', id)
+  // Never let form/draft overwrites change drag order
+  const { sort_order: _ignored, ...safe } = item as Partial<PortfolioItemRow> & {
+    sort_order?: number
+  }
+
+  const { error } = await supabase.from('portfolio_items').update(safe).eq('id', id)
   if (error) throw new Error(error.message)
 }
 
@@ -158,12 +232,13 @@ export async function uploadTourThumbnail(
   previousPath?: string | null,
 ): Promise<string> {
   const supabase = getSupabase()
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-  const path = `${id}.${ext}`
+  const compressed = await compressThumbnailFile(file, thumbStoragePath(id))
+  const path = thumbStoragePath(id)
 
-  const { error } = await supabase.storage.from('tour-thumbs').upload(path, file, {
+  const { error } = await supabase.storage.from('tour-thumbs').upload(path, compressed, {
     upsert: true,
-    contentType: file.type || 'image/jpeg',
+    contentType: 'image/webp',
+    cacheControl: '31536000',
   })
 
   if (error) throw new Error(error.message)
@@ -281,16 +356,16 @@ export async function duplicateTour(id: string): Promise<string> {
   let thumbnailPath: string | null = null
   if (tour.thumbnail_path) {
     const normalized = tour.thumbnail_path.replace(/^\/+/, '').replace(/^tour-thumbs\//, '')
-    const ext = normalized.split('.').pop() || 'jpg'
-    const newPath = `${newId}.${ext}`
+    const newPath = thumbStoragePath(newId)
     const { data: blob, error: dlError } = await supabase.storage
       .from('tour-thumbs')
       .download(normalized)
 
     if (blob && !dlError) {
+      const compressed = await compressThumbnailFile(blob, newPath)
       const { error: upError } = await supabase.storage
         .from('tour-thumbs')
-        .upload(newPath, blob, { upsert: true })
+        .upload(newPath, compressed, { upsert: true, contentType: 'image/webp', cacheControl: '31536000' })
       if (!upError) thumbnailPath = newPath
     }
   }
